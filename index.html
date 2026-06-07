@@ -206,9 +206,7 @@
         <div class="hint">Subscriptions, kids' activities, travel, gifts, pets, etc. (Car/student loan <i>payments</i> go in "Other monthly debt" above.)</div></div>
       <div class="field"><label>Monthly cushion to keep <b id="cushionV"></b></label><input type="number" id="cushion" value="1500" step="100">
         <div class="hint">Minimum left over each month after housing + expenses — savings/discretionary breathing room. This is what makes a budget "comfortable."</div></div>
-      <label class="toggle"><input type="checkbox" id="incMaint" checked> Count maintenance reserve as part of housing</label>
-      <br>
-      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="incUtil" checked> Count utilities as part of housing</label>
+      <div class="hint">Utilities &amp; maintenance are also living expenses, but they scale with the home — set them in <b>Carrying costs</b> and they're added on top of the totals here automatically.</div>
     </div>
   </div>
 
@@ -226,7 +224,7 @@
       <table id="stratTable">
         <thead><tr>
           <th>Strategy</th><th>Max price</th><th>Down</th><th>Loan</th>
-          <th>Monthly</th><th>% gross</th><th>% net</th><th>Limited by</th>
+          <th>Housing/mo</th><th>+util&amp;maint</th><th>% net (housing)</th><th>Limited by</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -298,8 +296,7 @@ function I(){
     term:+$('term').value, pmi:+$('pmi').value, close:+$('close').value,
     ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
     expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
-    cushion:+$('cushion').value,
-    incMaint:$('incMaint').checked, incUtil:$('incUtil').checked
+    cushion:+$('cushion').value
   };
 }
 
@@ -364,11 +361,10 @@ function scenario(p,price,downFrac){
   const pointsCost=p.points/100*loan;
   const closing=p.close/100*price;
   const cashToClose=down+closing+pointsCost;
-  // comfort budget components (always include PITI+PMI+HOA; maint/util optional)
-  const core=pi+pmi+tax+ins+hoa;
-  const comfortMonthly=core+(p.incMaint?maint:0)+(p.incUtil?util:0);
-  const totalMonthly=pi+pmi+tax+ins+maint+util+hoa; // everything
-  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,cashToClose,core,comfortMonthly,totalMonthly};
+  const core=pi+pmi+tax+ins+hoa;       // HOUSING: mortgage payment only
+  const homeLiving=maint+util;          // home-driven LIVING expenses (counted with food/etc.)
+  const totalMonthly=core+homeLiving;   // all home-related monthly outflow
+  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,cashToClose,core,homeLiving,totalMonthly};
 }
 
 // ---------- emergency fund: X months of housing+utilities + fixed buffer ----------
@@ -381,7 +377,7 @@ function maxForDownFrac(p,th,downFrac){
   const ceiling=Math.max(0, th.netMo - p.expenses - p.debt - p.cushion); // housing budget
   function feasible(price){
     const s=scenario(p,price,downFrac);
-    if(s.comfortMonthly>ceiling) return false;
+    if(s.totalMonthly>ceiling) return false;
     return s.cashToClose <= (p.cash - efFor(p,s));
   }
   let lo=0,hi=8000000;
@@ -389,7 +385,7 @@ function maxForDownFrac(p,th,downFrac){
   const price=lo;
   const s=scenario(p,price,downFrac);
   const ef=efFor(p,s), cashAvail=p.cash-ef;
-  const cRatio=ceiling>0?s.comfortMonthly/ceiling:Infinity;
+  const cRatio=ceiling>0?s.totalMonthly/ceiling:Infinity;
   const kRatio=cashAvail>0?s.cashToClose/cashAvail:Infinity;
   const binding = cRatio>=kRatio ? 'monthly budget' : 'cash on hand';
   return {price,binding,s,ef};
@@ -418,7 +414,7 @@ function maxAllCash(p,th){
     if(down===null) return false;
     if(price>0 && down/price < 0.20) return false; // enforce 20% minimum (no PMI)
     const s=scenario(p,price,price>0?down/price:0);
-    return s.comfortMonthly<=ceiling;
+    return s.totalMonthly<=ceiling;
   }
   let lo=0,hi=8000000;
   for(let i=0;i<60;i++){const mid=(lo+hi)/2;feasible(mid)?lo=mid:hi=mid;}
@@ -496,15 +492,15 @@ function render(){
   const tb=$('stratTable').querySelector('tbody'); tb.innerHTML='';
   strategies.forEach(st=>{
     const r=st.r,s=r.s;
-    const gp=s.totalMonthly/th.grossMo*100, np=s.totalMonthly/th.netMo*100;
+    const np=s.core/th.netMo*100; // housing as % of take-home (front-end)
     const dpLabel=(r.downFrac!=null)?(r.downFrac*100).toFixed(0)+'%':'';
     tb.innerHTML+=`<tr style="cursor:pointer" title="Load this scenario into the explorer below" onclick="loadStrat(${Math.round(r.price)},${(r.downFrac*100).toFixed(2)})">
       <td>${st.name}${st.name.includes('Optimized')?' <span class="hint">('+dpLabel+')</span>':''} <span class="hint">↓load</span></td>
       <td><b>${fmt(r.price)}</b></td>
       <td>${fmt(s.down)}<br><span class="hint">${dpLabel}</span></td>
       <td>${fmt(s.loan)}</td>
-      <td>${fmt(s.totalMonthly)}</td>
-      <td>${pct(gp)}</td>
+      <td>${fmt(s.core)}</td>
+      <td>${fmt(s.homeLiving)}</td>
       <td>${pct(np)}</td>
       <td><span class="pill ${r.binding.includes('cash')?'warn':'good'}">${r.binding}</span></td>
     </tr>`;
@@ -528,18 +524,18 @@ function render(){
   $('expPriceV').textContent=fmt(expPrice); $('expDownV').textContent=(expDown*100).toFixed(0)+'% ('+fmt(expPrice*expDown)+')';
   const es=scenario(p,expPrice,expDown);
   const esEf=efFor(p,es);
-  const egp=es.totalMonthly/th.grossMo*100, enp=es.totalMonthly/th.netMo*100;
+  const egp=es.core/th.grossMo*100, enp=es.core/th.netMo*100; // housing as % of income
   const cashShort=es.cashToClose-(p.cash-esEf);
   const efAfter=p.cash-es.cashToClose;
   const leftover = th.netMo - es.totalMonthly - p.expenses - p.debt; // discretionary/savings left each month
-  $('expHead').innerHTML=`${fmt(es.totalMonthly)}<small>/mo all-in &nbsp;·&nbsp; ${pct(egp)} of gross &nbsp;·&nbsp; ${pct(enp)} of take-home</small>`;
+  $('expHead').innerHTML=`${fmt(es.core)}<small>/mo housing &nbsp;·&nbsp; ${pct(egp)} of gross &nbsp;·&nbsp; ${pct(enp)} of take-home</small>`;
   $('expKpis').innerHTML=`
     <div class="kpi"><div class="v">${fmt(es.pi)}</div><div class="l">P&amp;I @ ${es.eff.toFixed(2)}%</div></div>
     <div class="kpi"><div class="v">${es.pmi>0?fmt(es.pmi):'—'}</div><div class="l">PMI (${(es.ltv*100).toFixed(0)}% LTV)</div></div>
     <div class="kpi"><div class="v">${fmt(es.cashToClose)}</div><div class="l">Cash to close</div></div>
     <div class="kpi"><div class="v" style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</div><div class="l">Leftover / mo</div></div>`;
   const spentPct = Math.min(100,(es.totalMonthly+p.expenses+p.debt)/th.netMo*100);
-  $('expBarLabel').textContent=`Housing + expenses + debt = ${pct(spentPct)} of take-home · ${fmt(leftover)}/mo left`;
+  $('expBarLabel').textContent=`Housing + living expenses + debt = ${pct(spentPct)} of take-home · ${fmt(leftover)}/mo left`;
   $('expBar').style.width=spentPct+'%';
   $('expBar').style.background = leftover>=p.cushion?'linear-gradient(90deg,#34d399,#38bdf8)' : leftover>=0?'linear-gradient(90deg,#fbbf24,#38bdf8)':'linear-gradient(90deg,#f87171,#fbbf24)';
   // flags
@@ -572,14 +568,21 @@ function render(){
   });
   $('expFlags').innerHTML=flags.join('');
   $('expMonthly').innerHTML=`<table>
+    <tr><td colspan="2" style="color:var(--accent);font-size:.72rem;letter-spacing:.04em">HOUSING (mortgage)</td></tr>
     <tr><td>Principal &amp; interest</td><td>${fmt(es.pi)}</td></tr>
     <tr><td>Property tax (${p.ptax}%)</td><td>${fmt(es.tax)}</td></tr>
     <tr><td>Home insurance (${p.ins}%)</td><td>${fmt(es.ins)}</td></tr>
     <tr><td>PMI</td><td>${fmt(es.pmi)}</td></tr>
     <tr><td>HOA</td><td>${fmt(es.hoa)}</td></tr>
+    <tr class="total"><td>Housing subtotal</td><td>${fmt(es.core)}</td></tr>
+    <tr><td colspan="2" style="color:var(--accent);font-size:.72rem;letter-spacing:.04em;padding-top:10px">LIVING EXPENSES</td></tr>
     <tr><td>Utilities</td><td>${fmt(es.util)}</td></tr>
     <tr><td>Maintenance reserve (${p.maint}%)</td><td>${fmt(es.maint)}</td></tr>
-    <tr class="total"><td>Total / month</td><td>${fmt(es.totalMonthly)}</td></tr>
+    <tr><td>Other expenses (food, etc.)</td><td>${fmt(p.expenses)}</td></tr>
+    <tr><td>Other debt</td><td>${fmt(p.debt)}</td></tr>
+    <tr class="total"><td>Living + debt subtotal</td><td>${fmt(es.homeLiving+p.expenses+p.debt)}</td></tr>
+    <tr class="total"><td>Total committed / month</td><td>${fmt(es.totalMonthly+p.expenses+p.debt)}</td></tr>
+    <tr><td>Leftover (after cushion target ${fmt(p.cushion)})</td><td style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</td></tr>
   </table>`;
   $('expCash').innerHTML=`<table>
     <tr><td>Down payment (${(expDown*100).toFixed(0)}%)</td><td>${fmt(es.down)}</td></tr>

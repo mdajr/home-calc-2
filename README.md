@@ -12,8 +12,10 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   subtracts those from spendable income. Shows your effective tax rate and full breakdown.
 - **Budget from real expenses.** Instead of an abstract "% of income," you enter your actual
   mandatory monthly spending (food, childcare, cars/transport, insurance, everything else) plus a
-  **cushion** you want left over. The housing budget = *take-home − expenses − debt − cushion*.
-  The resulting % of gross/net is still shown so you can see where you land.
+  **cushion** you want left over. *Housing* means the mortgage only (P&I, tax, insurance, PMI,
+  HOA); *utilities and maintenance* are treated as living expenses (they scale with the home).
+  The housing budget = *take-home − all living expenses − debt − cushion*, and the resulting %
+  of gross/net is still shown. (Utilities are still included in the emergency-fund calc.)
 - **Max affordable home, by strategy.** Side-by-side comparison of *20% down* (the minimum — no
   PMI), an *optimizer* that finds the down-payment % (≥20%) that buys the most house, and *all
   cash above emergency fund*, each respecting both your cash and your monthly budget. Click any
