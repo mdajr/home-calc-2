@@ -14,9 +14,10 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   mandatory monthly spending (food, childcare, cars/transport, insurance, everything else) plus a
   **cushion** you want left over. The housing budget = *take-home − expenses − debt − cushion*.
   The resulting % of gross/net is still shown so you can see where you land.
-- **Max affordable home, by strategy.** Side-by-side comparison of *all cash above emergency
-  fund*, *20% down (no PMI)*, *10% down*, and an *optimizer* that finds the down-payment % that
-  buys the most house — respecting both your cash and your monthly budget.
+- **Max affordable home, by strategy.** Side-by-side comparison of *20% down* (the minimum — no
+  PMI), an *optimizer* that finds the down-payment % (≥20%) that buys the most house, and *all
+  cash above emergency fund*, each respecting both your cash and your monthly budget. Click any
+  row to load its exact price + down-% into the explorer below.
 - **Live % of gross & take-home.** Every scenario shows the all-in monthly cost as a percentage
   of both gross and net pay, the monthly leftover, plus back-end DTI.
 - **"Explore a specific home" panel.** Price + down-payment sliders with a full monthly

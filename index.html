@@ -238,11 +238,11 @@
       <div class="row2">
         <div class="field">
           <label>Home price <b id="expPriceV"></b></label>
-          <input type="range" id="expPrice" min="400000" max="2000000" step="10000" value="1000000">
+          <input type="range" id="expPrice" min="400000" max="2000000" step="1000" value="1000000">
         </div>
         <div class="field">
           <label>Down payment <b id="expDownV"></b></label>
-          <input type="range" id="expDown" min="3" max="100" step="1" value="20">
+          <input type="range" id="expDown" min="20" max="100" step="1" value="20">
         </div>
       </div>
       <div class="bignum" id="expHead"></div>
@@ -416,6 +416,7 @@ function maxAllCash(p,th){
   function feasible(price){
     const down=solveDown(price);
     if(down===null) return false;
+    if(price>0 && down/price < 0.20) return false; // enforce 20% minimum (no PMI)
     const s=scenario(p,price,price>0?down/price:0);
     return s.comfortMonthly<=ceiling;
   }
@@ -432,7 +433,7 @@ function maxAllCash(p,th){
 // ---------- optimizer: best down fraction ----------
 function optimize(p,th){
   let best=null;
-  for(let dp=3;dp<=100;dp++){
+  for(let dp=20;dp<=100;dp++){ // 20% minimum down (no PMI)
     const r=maxForDownFrac(p,th,dp/100);
     if(!best||r.price>best.price){best=r;best.downFrac=dp/100;}
   }
@@ -488,18 +489,17 @@ function render(){
 
   // ----- strategy table -----
   const strategies=[
-    {name:'All cash above EF', r:maxAllCash(p,th)},
-    {name:'20% down (no PMI)', r:Object.assign(maxForDownFrac(p,th,0.20),{downFrac:0.20})},
-    {name:'10% down', r:Object.assign(maxForDownFrac(p,th,0.10),{downFrac:0.10})},
+    {name:'20% down', r:Object.assign(maxForDownFrac(p,th,0.20),{downFrac:0.20})},
     {name:'Optimized down %', r:optimize(p,th)},
+    {name:'All cash above EF', r:maxAllCash(p,th)},
   ];
   const tb=$('stratTable').querySelector('tbody'); tb.innerHTML='';
   strategies.forEach(st=>{
     const r=st.r,s=r.s;
     const gp=s.totalMonthly/th.grossMo*100, np=s.totalMonthly/th.netMo*100;
     const dpLabel=(r.downFrac!=null)?(r.downFrac*100).toFixed(0)+'%':'';
-    tb.innerHTML+=`<tr>
-      <td>${st.name}${st.name.includes('Optimized')?' <span class="hint">('+dpLabel+')</span>':''}</td>
+    tb.innerHTML+=`<tr style="cursor:pointer" title="Load this scenario into the explorer below" onclick="loadStrat(${Math.round(r.price)},${(r.downFrac*100).toFixed(2)})">
+      <td>${st.name}${st.name.includes('Optimized')?' <span class="hint">('+dpLabel+')</span>':''} <span class="hint">↓load</span></td>
       <td><b>${fmt(r.price)}</b></td>
       <td>${fmt(s.down)}<br><span class="hint">${dpLabel}</span></td>
       <td>${fmt(s.loan)}</td>
@@ -510,14 +510,12 @@ function render(){
     </tr>`;
   });
   // recommendation
-  const opt=strategies[3].r, twenty=strategies[1].r, allc=strategies[0].r;
+  const twenty=strategies[0].r, opt=strategies[1].r;
   let recMsg;
   if(opt.price>twenty.price+15000){
-    recMsg=`Putting <b>${(opt.downFrac*100).toFixed(0)}% down</b> gets you the most house (~${fmt(opt.price)})`;
-    if(opt.downFrac<0.20) recMsg+=` — accepting PMI of ~${fmt(opt.s.pmi)}/mo lets you stretch because your monthly budget (take-home − expenses − cushion), not cash, is the binding constraint.`;
-    else recMsg+=`, with cash as the limiting factor.`;
+    recMsg=`Putting <b>${(opt.downFrac*100).toFixed(0)}% down</b> gets you the most house (~${fmt(opt.price)}) — your monthly budget (take-home − expenses − cushion), not cash, is binding, so a bigger down payment shrinks the loan and lets you buy more.`;
   } else {
-    recMsg=`<b>20% down</b> (~${fmt(twenty.price)}) is your sweet spot — it avoids PMI and the optimizer can't beat it meaningfully.`;
+    recMsg=`<b>20% down</b> (~${fmt(twenty.price)}) is your max — cash on hand is the limiter, so the minimum 20% gives you the most house. Extra cash beyond that just lowers the loan (see "all cash").`;
   }
   $('rec').innerHTML='💡 '+recMsg+' &nbsp;Drag the explorer below to a target price to pressure-test the monthly numbers.';
 
@@ -653,6 +651,16 @@ function syncPresetIfNeeded(){
   }
   lastPreset=sel;
 }
+
+// ---------- load a strategy row into the explorer (so monthly numbers match) ----------
+window.loadStrat=function(price,dpPct){
+  const ep=$('expPrice');
+  if(price>+ep.max) ep.max=Math.ceil(price*1.1/50000)*50000;
+  ep.value=Math.round(price);
+  $('expDown').value=Math.round(dpPct);
+  render();
+  document.getElementById('expHead').scrollIntoView({behavior:'smooth',block:'center'});
+};
 
 // ---------- wire up number<->range pairs ----------
 function pair(numId,rangeId){
