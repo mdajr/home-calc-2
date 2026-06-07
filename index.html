@@ -312,7 +312,19 @@ function takeHome(p){
   const eit = p.eit/100*paBase;
   const totalTax = fed+ss+med+pa+eit;
   const net = p.income - totalTax - c401 - hsa; // spendable
-  return {c401,hsa,fed,ss,med,pa,eit,totalTax,net,fedTI,grossMo:p.income/12,netMo:net/12};
+  // ----- per-person allocation (FICA/PA/EIT are naturally per-person;
+  // joint federal income tax is split by each person's after-pretax income) -----
+  const wA=Math.max(0,p.eA-hsaA), wB=Math.max(0,p.eB-hsaB), wTot=(wA+wB)||1;
+  const c401A=p.eA>0?MAX_401K:0, c401B=p.eB>0?MAX_401K:0;
+  const ssA=SS_RATE*Math.min(wA,SS_WAGE_BASE), ssB=SS_RATE*Math.min(wB,SS_WAGE_BASE);
+  const medA=med*wA/wTot, medB=med*wB/wTot;
+  const fbA=Math.max(0,p.eA-c401A-hsaA), fbB=Math.max(0,p.eB-c401B-hsaB), fbTot=(fbA+fbB)||1;
+  const fedA=fed*fbA/fbTot, fedB=fed*fbB/fbTot;
+  const netA=p.eA-c401A-hsaA-ssA-medA-fedA-PA_RATE*wA-p.eit/100*wA;
+  const netB=p.eB-c401B-hsaB-ssB-medB-fedB-PA_RATE*wB-p.eit/100*wB;
+  const perA={gross:p.eA,net:netA,netMo:netA/12};
+  const perB={gross:p.eB,net:netB,netMo:netB/12};
+  return {c401,hsa,fed,ss,med,pa,eit,totalTax,net,fedTI,grossMo:p.income/12,netMo:net/12,perA,perB};
 }
 
 // ---------- monthly housing for a given price & down% ----------
@@ -426,13 +438,17 @@ function render(){
 
   // ----- take-home summary -----
   const effTaxRate=th.totalTax/p.income*100;
+  const perKpis=[];
+  if(p.eA>0) perKpis.push(`<div class="kpi"><div class="v">${fmt(th.perA.netMo)}</div><div class="l">Person A take-home/mo</div></div>`);
+  if(p.eB>0) perKpis.push(`<div class="kpi"><div class="v">${fmt(th.perB.netMo)}</div><div class="l">Person B take-home/mo</div></div>`);
   $('netSummary').innerHTML=`
-    <div class="bignum">${fmt(th.net)} <small>/yr take-home &nbsp;·&nbsp; ${fmt(th.netMo)}/mo</small></div>
+    <div class="bignum">${fmt(th.net)} <small>/yr take-home &nbsp;·&nbsp; ${fmt(th.netMo)}/mo combined</small></div>
     <div class="kpis">
       <div class="kpi"><div class="v">${fmt(th.grossMo)}</div><div class="l">Gross / mo</div></div>
       <div class="kpi"><div class="v">${pct(effTaxRate)}</div><div class="l">Eff. tax rate</div></div>
       <div class="kpi"><div class="v">${fmt(th.c401+th.hsa)}</div><div class="l">401k+HSA saved</div></div>
-    </div>`;
+    </div>
+    ${perKpis.length?`<div class="kpis" style="margin-top:10px">${perKpis.join('')}</div>`:''}`;
   $('taxBreak').innerHTML=`<table>
     <tr><td>Gross income</td><td>${fmt(p.income)}</td></tr>
     <tr><td>− 401(k) ×${p.earners} (pre-tax fed)</td><td>−${fmt(th.c401)}</td></tr>
@@ -514,6 +530,13 @@ function render(){
     : `<div class="flag">⚠️ Above your comfort target (${pct(enp)} > ${(p.comfort*100).toFixed(0)}% of take-home).</div>`);
   const backEnd=(es.totalMonthly+p.debt)/th.grossMo*100;
   flags.push(`<div class="flag">${backEnd<=43?'✅':'⚠️'} Back-end DTI ${pct(backEnd)} ${backEnd<=43?'(within typical lender max of 43%)':'(above typical 43% lender max)'}.</div>`);
+  // single-income resilience: can one salary alone carry mortgage + utilities?
+  const hu=es.core+es.util; // PITI + PMI + HOA + utilities
+  [['A',th.perA,p.eA],['B',th.perB,p.eB]].forEach(([nm,per,inc])=>{
+    if(inc>0) flags.push(hu<=per.netMo
+      ? `<div class="flag">✅ On Person ${nm}'s income alone (${fmt(per.netMo)}/mo take-home) the mortgage + utilities (${fmt(hu)}/mo) is covered.</div>`
+      : `<div class="flag">🚩 <b style="color:var(--bad)">Person ${nm}'s income alone (${fmt(per.netMo)}/mo take-home) can't cover mortgage + utilities (${fmt(hu)}/mo)</b> — this home needs both incomes.</div>`);
+  });
   $('expFlags').innerHTML=flags.join('');
   $('expMonthly').innerHTML=`<table>
     <tr><td>Principal &amp; interest</td><td>${fmt(es.pi)}</td></tr>
