@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chester County Home Affordability Calculator</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --ink:#e2e8f0; --muted:#94a3b8;
+    --accent:#38bdf8; --good:#34d399; --warn:#fbbf24; --bad:#f87171; --line:#334155;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.45}
+  header{padding:24px 20px 8px;max-width:1200px;margin:0 auto}
+  h1{font-size:1.5rem;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:.9rem}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px 20px 60px;display:grid;grid-template-columns:360px 1fr;gap:20px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  .panel h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 12px}
+  .field{margin-bottom:14px}
+  .field label{display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:4px}
+  .field label b{color:var(--ink);font-weight:600}
+  input[type=number],select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+       border-radius:8px;padding:8px 10px;font-size:.95rem}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hint{font-size:.72rem;color:var(--muted);margin-top:3px}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);cursor:pointer}
+  /* results */
+  .bignum{font-size:2.2rem;font-weight:700;color:var(--good);line-height:1.1}
+  .bignum small{font-size:.9rem;color:var(--muted);font-weight:400}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+  .kpi{background:var(--panel2);border-radius:8px;padding:10px}
+  .kpi .v{font-size:1.15rem;font-weight:700}
+  .kpi .l{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--line)}
+  tr.total td{font-weight:700;border-top:2px solid var(--line);border-bottom:none}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600}
+  .pill.good{background:rgba(52,211,153,.15);color:var(--good)}
+  .pill.warn{background:rgba(251,191,36,.15);color:var(--warn)}
+  .pill.bad{background:rgba(248,113,113,.15);color:var(--bad)}
+  .barwrap{background:var(--panel2);border-radius:6px;height:10px;overflow:hidden;margin-top:6px}
+  .bar{height:100%;background:linear-gradient(90deg,var(--good),var(--accent))}
+  .note{font-size:.78rem;color:var(--muted);background:var(--panel2);border-left:3px solid var(--accent);
+        padding:10px 12px;border-radius:0 8px 8px 0;margin-top:10px}
+  details{margin-top:10px}
+  summary{cursor:pointer;color:var(--accent);font-size:.85rem}
+  .flags{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
+  .flag{display:flex;gap:8px;align-items:center}
+  a{color:var(--accent)}
+  .stratrec{background:rgba(56,189,248,.08);border:1px solid var(--accent);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:.88rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏡 Chester County Home Affordability Calculator</h1>
+  <div class="sub">Downingtown / Exton / West Chester — WCASD &amp; DASD. Tuned for MFJ households maxing 401(k) + HSA. All figures editable; everything updates live.</div>
+</header>
+
+<div class="wrap">
+  <!-- ============ INPUTS ============ -->
+  <div>
+    <div class="panel">
+      <h2>Income &amp; Cash</h2>
+      <div class="field">
+        <label>Combined pre-tax income <b id="incomeV"></b></label>
+        <input type="number" id="income" value="400000" step="5000">
+        <input type="range" id="incomeR" min="150000" max="900000" step="5000" value="400000">
+      </div>
+      <div class="field">
+        <label>Income split (earner A / earner B) <b id="splitV"></b></label>
+        <input type="range" id="split" min="50" max="100" step="5" value="50">
+        <div class="hint">Affects Social Security cap &amp; number of 401(k)s. 50 = even; 100 = single earner.</div>
+      </div>
+      <div class="field">
+        <label>Cash on hand (savings) <b id="cashV"></b></label>
+        <input type="number" id="cash" value="300000" step="5000">
+        <input type="range" id="cashR" min="50000" max="1200000" step="5000" value="300000">
+      </div>
+      <div class="field">
+        <label>Emergency fund to keep <b id="efV"></b></label>
+        <input type="number" id="ef" value="50000" step="5000">
+        <input type="range" id="efR" min="0" max="200000" step="5000" value="50000">
+        <div class="hint">Preserved <i>after</i> down payment, closing, and points.</div>
+      </div>
+      <div class="field">
+        <label>Other monthly debt (car/student/etc.) <b id="debtV"></b></label>
+        <input type="number" id="debt" value="0" step="50">
+        <div class="hint">Counts toward back-end DTI.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Location (taxes)</h2>
+      <div class="field">
+        <label>Township / school district</label>
+        <select id="preset">
+          <option value="wc_goshen" selected>West/East Goshen — WCASD</option>
+          <option value="wc_whiteland">West Whiteland (Exton) — WCASD</option>
+          <option value="dt_boro">Downingtown Borough — DASD</option>
+          <option value="dt_uwchlan">Uwchlan/Exton — DASD</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Local EIT % <b id="eitV"></b></label>
+          <input type="number" id="eit" value="1.0" step="0.05">
+        </div>
+        <div class="field">
+          <label>Property tax % of price <b id="ptaxV"></b></label>
+          <input type="number" id="ptax" value="1.0" step="0.05">
+        </div>
+      </div>
+      <div class="hint">Property tax = 2025 millage × Chester County CLR (30.6%). Real bills vary by the home's 1998-base assessment — adjust if you have a specific listing.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Mortgage</h2>
+      <div class="field">
+        <label>Interest rate (base) <b id="rateV"></b></label>
+        <input type="number" id="rate" value="6.5" step="0.05">
+        <input type="range" id="rateR" min="4" max="9" step="0.05" value="6.5">
+      </div>
+      <div class="field">
+        <label>Discount points purchased <b id="pointsV"></b></label>
+        <input type="range" id="points" min="0" max="4" step="0.25" value="0">
+        <div class="hint">1 point = 1% of loan, paid at closing. Each point lowers the rate by the amount below.</div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Rate drop / point <b id="buydownV"></b></label>
+          <input type="number" id="buydown" value="0.25" step="0.05">
+        </div>
+        <div class="field">
+          <label>Loan term</label>
+          <select id="term"><option value="30">30 yr</option><option value="15">15 yr</option></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>PMI %/yr (if &lt;20% down) <b id="pmiV"></b></label>
+          <input type="number" id="pmi" value="0.6" step="0.05">
+        </div>
+        <div class="field">
+          <label>Closing costs % of price <b id="closeV"></b></label>
+          <input type="number" id="close" value="3.0" step="0.25">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Carrying costs</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Home insurance %/yr <b id="insV"></b></label>
+          <input type="number" id="ins" value="0.30" step="0.05">
+        </div>
+        <div class="field">
+          <label>Maintenance %/yr <b id="maintV"></b></label>
+          <input type="number" id="maint" value="1.0" step="0.1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Monthly HOA <b id="hoaV"></b></label>
+        <input type="number" id="hoa" value="0" step="25">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Home size (sqft) <b id="sqftV"></b></label>
+          <input type="number" id="sqft" value="3500" step="100">
+        </div>
+        <div class="field">
+          <label>Monthly utilities <b id="utilV"></b></label>
+          <input type="number" id="util" value="" placeholder="auto">
+        </div>
+      </div>
+      <div class="hint">Leave utilities blank to auto-estimate ($150 base + $0.10/sqft).</div>
+    </div>
+
+    <div class="panel">
+      <h2>Comfort target</h2>
+      <div class="field">
+        <label>Max housing cost as % of <i>take-home</i> <b id="comfortV"></b></label>
+        <input type="range" id="comfort" min="20" max="50" step="1" value="30">
+        <div class="hint">Drives the "max affordable" solver. The live % of gross &amp; net are always shown regardless.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="incMaint" checked> Count maintenance toward the comfort budget</label>
+      <br>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="incUtil" checked> Count utilities toward the comfort budget</label>
+    </div>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div>
+    <div class="panel">
+      <h2>Take-home pay (2026)</h2>
+      <div id="netSummary"></div>
+      <details><summary>Show full tax breakdown</summary><div id="taxBreak"></div></details>
+      <div class="note" id="netNote"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Maximum affordable home — by strategy</h2>
+      <table id="stratTable">
+        <thead><tr>
+          <th>Strategy</th><th>Max price</th><th>Down</th><th>Loan</th>
+          <th>Monthly</th><th>% gross</th><th>% net</th><th>Limited by</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="stratrec" id="rec"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Explore a specific home</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Home price <b id="expPriceV"></b></label>
+          <input type="range" id="expPrice" min="400000" max="2000000" step="10000" value="1000000">
+        </div>
+        <div class="field">
+          <label>Down payment <b id="expDownV"></b></label>
+          <input type="range" id="expDown" min="3" max="100" step="1" value="20">
+        </div>
+      </div>
+      <div class="bignum" id="expHead"></div>
+      <div class="kpis" id="expKpis"></div>
+      <div style="margin-top:6px"><span class="hint">Housing vs take-home pay</span><div class="barwrap"><div class="bar" id="expBar"></div></div></div>
+      <div class="flags" id="expFlags"></div>
+      <details open><summary>Monthly payment breakdown</summary><div id="expMonthly"></div></details>
+      <details><summary>Cash-to-close breakdown</summary><div id="expCash"></div></details>
+    </div>
+
+    <div class="panel">
+      <h2>Should you buy down the rate?</h2>
+      <div id="pointsAnalysis"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Assumptions &amp; sources</h2>
+      <div id="assump" class="hint" style="line-height:1.6"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- constants (2026) ----------
+const STD_DED=32200, SS_WAGE_BASE=184500, SS_RATE=0.062, MED_RATE=0.0145, MED_SURTAX=0.009, MED_SURTAX_THR=250000;
+const PA_RATE=0.0307, MAX_401K=24500, HSA_FAMILY=8750;
+const FED=[[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]];
+const PRESETS={
+  wc_goshen:{eit:1.00,ptax:1.00}, wc_whiteland:{eit:1.00,ptax:1.00},
+  dt_boro:{eit:1.00,ptax:1.25}, dt_uwchlan:{eit:1.00,ptax:1.25}, custom:{eit:1.00,ptax:1.10}
+};
+
+// ---------- helpers ----------
+const $=id=>document.getElementById(id);
+const fmt=n=>'$'+Math.round(n).toLocaleString();
+const fmt0=n=>'$'+Math.round(n).toLocaleString();
+const pct=n=>(n).toFixed(1)+'%';
+function fedTax(ti){let t=0;for(let i=0;i<FED.length;i++){const lo=FED[i][0],hi=i<FED.length-1?FED[i+1][0]:Infinity,r=FED[i][1];if(ti>lo)t+=(Math.min(ti,hi)-lo)*r;}return t;}
+function pmt(L,annual,years){if(L<=0)return 0;const r=annual/100/12,n=years*12;if(r===0)return L/n;return L*r/(1-Math.pow(1+r,-n));}
+
+// ---------- read inputs ----------
+function I(){
+  const income=+$('income').value, splitPct=+$('split').value/100;
+  const eA=income*splitPct, eB=income*(1-splitPct);
+  const earners=(eB>0?2:1);
+  const sqft=+$('sqft').value;
+  const utilManual=$('util').value.trim();
+  const util=utilManual===''?(150+0.10*sqft):+utilManual;
+  return {
+    income, eA, eB, earners,
+    cash:+$('cash').value, ef:+$('ef').value, debt:+$('debt').value,
+    eit:+$('eit').value, ptax:+$('ptax').value,
+    rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
+    term:+$('term').value, pmi:+$('pmi').value, close:+$('close').value,
+    ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
+    comfort:+$('comfort').value/100,
+    incMaint:$('incMaint').checked, incUtil:$('incUtil').checked
+  };
+}
+
+// ---------- take-home ----------
+function takeHome(p){
+  const c401 = MAX_401K*p.earners;
+  const hsa = HSA_FAMILY;
+  // Federal: 401k + HSA pre-tax, standard deduction
+  const fedTI = Math.max(0, p.income - c401 - hsa - STD_DED);
+  const fed = fedTax(fedTI);
+  // FICA per earner. HSA (cafeteria) reduces FICA wages; 401k does NOT.
+  const hsaA = hsa*(p.eA/(p.income||1)), hsaB = hsa*(p.eB/(p.income||1));
+  const ss = SS_RATE*(Math.min(Math.max(0,p.eA-hsaA),SS_WAGE_BASE)+Math.min(Math.max(0,p.eB-hsaB),SS_WAGE_BASE));
+  const medWages = Math.max(0,p.income-hsa);
+  const med = MED_RATE*medWages + MED_SURTAX*Math.max(0,medWages-MED_SURTAX_THR);
+  // PA + local EIT: HSA excluded, 401k taxed
+  const paBase = Math.max(0,p.income-hsa);
+  const pa = PA_RATE*paBase;
+  const eit = p.eit/100*paBase;
+  const totalTax = fed+ss+med+pa+eit;
+  const net = p.income - totalTax - c401 - hsa; // spendable
+  return {c401,hsa,fed,ss,med,pa,eit,totalTax,net,fedTI,grossMo:p.income/12,netMo:net/12};
+}
+
+// ---------- monthly housing for a given price & down% ----------
+function scenario(p,price,downFrac){
+  const down=price*downFrac;
+  const loan=price-down;
+  const ltv=loan/price;
+  const eff=Math.max(0.5, p.rate - p.points*p.buydown); // effective rate after points
+  const pi=pmt(loan,eff,p.term);
+  const pmi=(ltv>0.80)? p.pmi/100*loan/12 : 0;
+  const tax=p.ptax/100*price/12;
+  const ins=p.ins/100*price/12;
+  const maint=p.maint/100*price/12;
+  const util=p.util, hoa=p.hoa;
+  const pointsCost=p.points/100*loan;
+  const closing=p.close/100*price;
+  const cashToClose=down+closing+pointsCost;
+  // comfort budget components (always include PITI+PMI+HOA; maint/util optional)
+  const core=pi+pmi+tax+ins+hoa;
+  const comfortMonthly=core+(p.incMaint?maint:0)+(p.incUtil?util:0);
+  const totalMonthly=pi+pmi+tax+ins+maint+util+hoa; // everything
+  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,cashToClose,core,comfortMonthly,totalMonthly};
+}
+
+// ---------- max price for a fixed down fraction ----------
+function maxForDownFrac(p,th,downFrac){
+  const ceiling=p.comfort*th.netMo;
+  const avail=p.cash-p.ef;
+  // cash cap: down + closing%*price + points%*loan <= avail
+  // down=downFrac*price, loan=(1-downFrac)*price
+  const cashDenom=downFrac + p.close/100 + p.points/100*(1-downFrac);
+  const cashCap = avail>0 ? avail/cashDenom : 0;
+  // monthly cap via binary search on price (monotonic)
+  let lo=0,hi=8000000;
+  for(let i=0;i<60;i++){const mid=(lo+hi)/2;const s=scenario(p,mid,downFrac);(s.comfortMonthly<=ceiling)?lo=mid:hi=mid;}
+  const monthlyCap=lo;
+  const price=Math.max(0,Math.min(cashCap,monthlyCap));
+  const binding = monthlyCap<cashCap ? 'monthly comfort' : 'cash on hand';
+  return {price,binding,s:scenario(p,price,downFrac)};
+}
+
+// ---------- all-cash-down: put every available dollar down ----------
+function maxAllCash(p,th){
+  const ceiling=p.comfort*th.netMo;
+  const avail=p.cash-p.ef;
+  let lo=0,hi=8000000;
+  function feasible(price){
+    // max down such that down+closing+points<=avail; loan=price-down
+    // down=(avail-close%*price-points%*price)/(1-points%)  [points on loan=price-down]
+    const closing=p.close/100*price;
+    let down=(avail-closing-p.points/100*price)/(1-p.points/100);
+    if(down<0) return false;            // can't even cover closing+points at 0 down
+    if(down>price) down=price;          // all cash, no loan
+    const s=scenario(p,price,down/price);
+    return s.comfortMonthly<=ceiling;
+  }
+  for(let i=0;i<60;i++){const mid=(lo+hi)/2;feasible(mid)?lo=mid:hi=mid;}
+  const price=lo;
+  const closing=p.close/100*price;
+  let down=(avail-closing-p.points/100*price)/(1-p.points/100);
+  if(down>price)down=price; if(down<0)down=0;
+  const s=scenario(p,price,price>0?down/price:0);
+  const binding = (down/price>=0.999)?'cash (all cash, no loan)':'monthly comfort';
+  return {price,binding,s,downFrac:price>0?down/price:0};
+}
+
+// ---------- optimizer: best down fraction ----------
+function optimize(p,th){
+  let best=null;
+  for(let dp=3;dp<=100;dp++){
+    const r=maxForDownFrac(p,th,dp/100);
+    if(!best||r.price>best.price){best=r;best.downFrac=dp/100;}
+  }
+  return best;
+}
+
+// ---------- render ----------
+function render(){
+  syncPresetIfNeeded();
+  const p=I();
+  // labels
+  $('incomeV').textContent=fmt(p.income); $('cashV').textContent=fmt(p.cash); $('efV').textContent=fmt(p.ef);
+  $('splitV').textContent=(p.income*(+$('split').value/100)/1000).toFixed(0)+'k / '+(p.income*(1-(+$('split').value/100))/1000).toFixed(0)+'k';
+  $('debtV').textContent=fmt(p.debt)+'/mo';
+  $('eitV').textContent=p.eit+'%'; $('ptaxV').textContent=p.ptax+'%';
+  $('rateV').textContent=p.rate+'%'; $('pointsV').textContent=p.points+' pts';
+  $('buydownV').textContent=p.buydown+'%'; $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%';
+  $('insV').textContent=p.ins+'%'; $('maintV').textContent=p.maint+'%'; $('hoaV').textContent=fmt(p.hoa)+'/mo';
+  $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
+  $('comfortV').textContent=(p.comfort*100).toFixed(0)+'%';
+  // keep number<->range pairs in sync done via listeners
+
+  const th=takeHome(p);
+
+  // ----- take-home summary -----
+  const effTaxRate=th.totalTax/p.income*100;
+  $('netSummary').innerHTML=`
+    <div class="bignum">${fmt(th.net)} <small>/yr take-home &nbsp;·&nbsp; ${fmt(th.netMo)}/mo</small></div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${fmt(th.grossMo)}</div><div class="l">Gross / mo</div></div>
+      <div class="kpi"><div class="v">${pct(effTaxRate)}</div><div class="l">Eff. tax rate</div></div>
+      <div class="kpi"><div class="v">${fmt(th.c401+th.hsa)}</div><div class="l">401k+HSA saved</div></div>
+    </div>`;
+  $('taxBreak').innerHTML=`<table>
+    <tr><td>Gross income</td><td>${fmt(p.income)}</td></tr>
+    <tr><td>− 401(k) ×${p.earners} (pre-tax fed)</td><td>−${fmt(th.c401)}</td></tr>
+    <tr><td>− HSA family (pre-tax)</td><td>−${fmt(th.hsa)}</td></tr>
+    <tr><td>Federal taxable (after $${STD_DED.toLocaleString()} std ded)</td><td>${fmt(th.fedTI)}</td></tr>
+    <tr><td>Federal income tax</td><td>−${fmt(th.fed)}</td></tr>
+    <tr><td>Social Security (6.2%)</td><td>−${fmt(th.ss)}</td></tr>
+    <tr><td>Medicare (1.45%+)</td><td>−${fmt(th.med)}</td></tr>
+    <tr><td>PA state (3.07%)</td><td>−${fmt(th.pa)}</td></tr>
+    <tr><td>Local EIT (${p.eit}%)</td><td>−${fmt(th.eit)}</td></tr>
+    <tr class="total"><td>Spendable take-home</td><td>${fmt(th.net)}</td></tr>
+  </table>`;
+  $('netNote').innerHTML=`Take-home subtracts your 401(k) + HSA contributions (they're not spendable). Uses the <b>standard deduction</b>; itemizing mortgage interest + up to $40k SALT could raise your take-home and budget, so treat these as <b>conservative</b>.`;
+
+  // ----- strategy table -----
+  const strategies=[
+    {name:'All cash above EF', r:maxAllCash(p,th)},
+    {name:'20% down (no PMI)', r:Object.assign(maxForDownFrac(p,th,0.20),{downFrac:0.20})},
+    {name:'10% down', r:Object.assign(maxForDownFrac(p,th,0.10),{downFrac:0.10})},
+    {name:'Optimized down %', r:optimize(p,th)},
+  ];
+  const tb=$('stratTable').querySelector('tbody'); tb.innerHTML='';
+  strategies.forEach(st=>{
+    const r=st.r,s=r.s;
+    const gp=s.totalMonthly/th.grossMo*100, np=s.totalMonthly/th.netMo*100;
+    const dpLabel=(r.downFrac!=null)?(r.downFrac*100).toFixed(0)+'%':'';
+    tb.innerHTML+=`<tr>
+      <td>${st.name}${st.name.includes('Optimized')?' <span class="hint">('+dpLabel+')</span>':''}</td>
+      <td><b>${fmt(r.price)}</b></td>
+      <td>${fmt(s.down)}<br><span class="hint">${dpLabel}</span></td>
+      <td>${fmt(s.loan)}</td>
+      <td>${fmt(s.totalMonthly)}</td>
+      <td>${pct(gp)}</td>
+      <td>${pct(np)}</td>
+      <td><span class="pill ${r.binding.includes('cash')?'warn':'good'}">${r.binding}</span></td>
+    </tr>`;
+  });
+  // recommendation
+  const opt=strategies[3].r, twenty=strategies[1].r, allc=strategies[0].r;
+  let recMsg;
+  if(opt.price>twenty.price+15000){
+    recMsg=`Putting <b>${(opt.downFrac*100).toFixed(0)}% down</b> gets you the most house (~${fmt(opt.price)})`;
+    if(opt.downFrac<0.20) recMsg+=` — accepting PMI of ~${fmt(opt.s.pmi)}/mo lets you stretch the budget because your monthly comfort limit, not cash, is the binding constraint.`;
+    else recMsg+=`, with cash as the limiting factor.`;
+  } else {
+    recMsg=`<b>20% down</b> (~${fmt(twenty.price)}) is your sweet spot — it avoids PMI and the optimizer can't beat it meaningfully.`;
+  }
+  $('rec').innerHTML='💡 '+recMsg+' &nbsp;Drag the explorer below to a target price to pressure-test the monthly numbers.';
+
+  // sync explore slider ranges to optimized result
+  const expHi=Math.max(2000000, Math.ceil(opt.price*1.3/50000)*50000);
+  $('expPrice').max=expHi;
+
+  // ----- explore -----
+  const expPrice=+$('expPrice').value, expDown=+$('expDown').value/100;
+  $('expPriceV').textContent=fmt(expPrice); $('expDownV').textContent=(expDown*100).toFixed(0)+'% ('+fmt(expPrice*expDown)+')';
+  const es=scenario(p,expPrice,expDown);
+  const egp=es.totalMonthly/th.grossMo*100, enp=es.totalMonthly/th.netMo*100;
+  const cashShort=es.cashToClose-(p.cash-p.ef);
+  const efAfter=p.cash-es.cashToClose;
+  $('expHead').innerHTML=`${fmt(es.totalMonthly)}<small>/mo all-in &nbsp;·&nbsp; ${pct(egp)} of gross &nbsp;·&nbsp; ${pct(enp)} of take-home</small>`;
+  $('expKpis').innerHTML=`
+    <div class="kpi"><div class="v">${fmt(es.pi)}</div><div class="l">P&amp;I @ ${es.eff.toFixed(2)}%</div></div>
+    <div class="kpi"><div class="v">${es.pmi>0?fmt(es.pmi):'—'}</div><div class="l">PMI (${(es.ltv*100).toFixed(0)}% LTV)</div></div>
+    <div class="kpi"><div class="v">${fmt(es.cashToClose)}</div><div class="l">Cash to close</div></div>`;
+  $('expBar').style.width=Math.min(100,enp)+'%';
+  $('expBar').style.background = enp<=30?'linear-gradient(90deg,#34d399,#38bdf8)' : enp<=40?'linear-gradient(90deg,#fbbf24,#38bdf8)':'linear-gradient(90deg,#f87171,#fbbf24)';
+  // flags
+  const flags=[];
+  flags.push(cashShort<=0
+    ? `<div class="flag">✅ Cash works — ${fmt(p.cash-es.cashToClose)} left, keeping the ${fmt(p.ef)} emergency fund ${efAfter>=p.ef?'intact':'<b style="color:var(--bad)">(short!)</b>'}.</div>`
+    : `<div class="flag">❌ <b style="color:var(--bad)">Short ${fmt(cashShort)} of cash</b> after preserving the emergency fund.</div>`);
+  flags.push(es.ltv>0.80
+    ? `<div class="flag">⚠️ Under 20% down → paying PMI (~${fmt(es.pmi)}/mo) until you reach 20% equity.</div>`
+    : `<div class="flag">✅ ≥20% down → no PMI.</div>`);
+  flags.push(enp<=p.comfort*100
+    ? `<div class="flag">✅ Within your comfort target (${pct(enp)} ≤ ${(p.comfort*100).toFixed(0)}% of take-home).</div>`
+    : `<div class="flag">⚠️ Above your comfort target (${pct(enp)} > ${(p.comfort*100).toFixed(0)}% of take-home).</div>`);
+  const backEnd=(es.totalMonthly+p.debt)/th.grossMo*100;
+  flags.push(`<div class="flag">${backEnd<=43?'✅':'⚠️'} Back-end DTI ${pct(backEnd)} ${backEnd<=43?'(within typical lender max of 43%)':'(above typical 43% lender max)'}.</div>`);
+  $('expFlags').innerHTML=flags.join('');
+  $('expMonthly').innerHTML=`<table>
+    <tr><td>Principal &amp; interest</td><td>${fmt(es.pi)}</td></tr>
+    <tr><td>Property tax (${p.ptax}%)</td><td>${fmt(es.tax)}</td></tr>
+    <tr><td>Home insurance (${p.ins}%)</td><td>${fmt(es.ins)}</td></tr>
+    <tr><td>PMI</td><td>${fmt(es.pmi)}</td></tr>
+    <tr><td>HOA</td><td>${fmt(es.hoa)}</td></tr>
+    <tr><td>Utilities</td><td>${fmt(es.util)}</td></tr>
+    <tr><td>Maintenance reserve (${p.maint}%)</td><td>${fmt(es.maint)}</td></tr>
+    <tr class="total"><td>Total / month</td><td>${fmt(es.totalMonthly)}</td></tr>
+  </table>`;
+  $('expCash').innerHTML=`<table>
+    <tr><td>Down payment (${(expDown*100).toFixed(0)}%)</td><td>${fmt(es.down)}</td></tr>
+    <tr><td>Closing costs (${p.close}%)</td><td>${fmt(es.closing)}</td></tr>
+    <tr><td>Discount points (${p.points})</td><td>${fmt(es.pointsCost)}</td></tr>
+    <tr class="total"><td>Cash to close</td><td>${fmt(es.cashToClose)}</td></tr>
+    <tr><td>Cash on hand</td><td>${fmt(p.cash)}</td></tr>
+    <tr><td>Remaining after close</td><td style="color:${efAfter>=p.ef?'var(--good)':'var(--bad)'}">${fmt(efAfter)}</td></tr>
+    <tr><td>Emergency fund target</td><td>${fmt(p.ef)}</td></tr>
+  </table>`;
+
+  // ----- points analysis (on the explore loan) -----
+  renderPoints(p,th,expPrice,expDown);
+
+  // ----- assumptions -----
+  $('assump').innerHTML=`
+    <b>Tax year 2026, MFJ.</b> Std deduction $${STD_DED.toLocaleString()}; SS wage base $${SS_WAGE_BASE.toLocaleString()}/person; 401(k) $${MAX_401K.toLocaleString()}/person; HSA family $${HSA_FAMILY.toLocaleString()}.
+    PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT &amp; property-tax presets for Chester County townships (most 1.0%; East Whiteland 0.8%).
+    Property tax derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%.<br>
+    Sources:
+    <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
+    <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k)/limits</a> ·
+    <a href="https://www.fidelity.com/learning-center/smart-money/hsa-contribution-limits" target="_blank">2026 HSA limits</a> ·
+    <a href="https://dced.pa.gov/local-government/local-income-tax-information/psd-codes-and-eit-rates/" target="_blank">PA EIT rates</a> ·
+    <a href="https://www.pa.gov/agencies/revenue/resources/tax-types-and-information/realty-transfer-tax/common-level-ratios" target="_blank">PA Common Level Ratios</a> ·
+    <a href="https://www.dasd.org/departments/business/taxes" target="_blank">DASD taxes</a> ·
+    <a href="https://www.wcasd.net" target="_blank">WCASD</a>.
+    <br><i>Estimates only — not financial advice. Verify a specific property's assessment and get lender quotes.</i>`;
+}
+
+function renderPoints(p,th,price,downFrac){
+  const base=scenario(p,price,downFrac); // current points
+  // compare 0 points vs current points (if any) and a few options
+  const opts=[0,1,2,3];
+  let rows='';
+  const ref=Object.assign({},p,{points:0});
+  const refS=scenario(ref,price,downFrac);
+  opts.forEach(pt=>{
+    const pp=Object.assign({},p,{points:pt});
+    const s=scenario(pp,price,downFrac);
+    const moSave=refS.pi - s.pi;
+    const cost=s.pointsCost;
+    const be=moSave>0?cost/moSave:Infinity;
+    rows+=`<tr ${pt===p.points?'class="total"':''}>
+      <td>${pt} ${pt===p.points?'(current)':''}</td>
+      <td>${s.eff.toFixed(2)}%</td>
+      <td>${fmt(s.pi)}</td>
+      <td>${pt===0?'—':fmt(cost)}</td>
+      <td>${pt===0?'—':fmt(moSave)+'/mo'}</td>
+      <td>${pt===0?'—':(isFinite(be)?be.toFixed(0)+' mo ('+(be/12).toFixed(1)+' yr)':'—')}</td>
+    </tr>`;
+  });
+  const cashFree=p.cash-p.ef;
+  $('pointsAnalysis').innerHTML=`
+    <div class="hint" style="margin-bottom:8px">On the explored ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(base.loan)}). Each point = 1% of loan, lowers rate ${p.buydown}%/pt. "Break-even" = months for monthly savings to repay the upfront cost.</div>
+    <table>
+      <thead><tr><th>Points</th><th>Rate</th><th>P&amp;I</th><th>Upfront</th><th>Saves</th><th>Break-even</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="note">With ${fmt(cashFree)} of cash above your emergency fund, points compete with your down payment. Buying points helps most if you'll <b>keep the loan past the break-even</b> (often 4–7 yrs) and your budget is monthly-constrained. If you're cash-constrained, that money usually does more as down payment (shrinks the loan <i>and</i> can kill PMI).</div>`;
+}
+
+// ---------- preset handling ----------
+let lastPreset='wc_goshen';
+function syncPresetIfNeeded(){
+  const sel=$('preset').value;
+  if(sel!==lastPreset && sel!=='custom'){
+    $('eit').value=PRESETS[sel].eit; $('ptax').value=PRESETS[sel].ptax;
+  }
+  lastPreset=sel;
+}
+
+// ---------- wire up number<->range pairs ----------
+function pair(numId,rangeId){
+  const n=$(numId),r=$(rangeId);
+  if(!r)return;
+  n.addEventListener('input',()=>{r.value=n.value;render();});
+  r.addEventListener('input',()=>{n.value=r.value;render();});
+}
+['income','cash','ef','rate'].forEach(id=>pair(id,id+'R'));
+
+// all inputs trigger render
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));
+$('preset').addEventListener('change',()=>{lastPreset='';render();});
+
+render();
+</script>
+</body>
+</html>
