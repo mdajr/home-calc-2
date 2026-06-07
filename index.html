@@ -67,26 +67,33 @@
   <div>
     <div class="panel">
       <h2>Income &amp; Cash</h2>
-      <div class="field">
-        <label>Combined pre-tax income <b id="incomeV"></b></label>
-        <input type="number" id="income" value="400000" step="5000">
-        <input type="range" id="incomeR" min="150000" max="900000" step="5000" value="400000">
+      <div class="row2">
+        <div class="field">
+          <label>Person A income <b id="incomeAV"></b></label>
+          <input type="number" id="incomeA" value="200000" step="5000">
+          <input type="range" id="incomeAR" min="0" max="600000" step="5000" value="200000">
+        </div>
+        <div class="field">
+          <label>Person B income <b id="incomeBV"></b></label>
+          <input type="number" id="incomeB" value="200000" step="5000">
+          <input type="range" id="incomeBR" min="0" max="600000" step="5000" value="200000">
+        </div>
       </div>
-      <div class="field">
-        <label>Income split (earner A / earner B) <b id="splitV"></b></label>
-        <input type="range" id="split" min="50" max="100" step="5" value="50">
-        <div class="hint">Affects Social Security cap &amp; number of 401(k)s. 50 = even; 100 = single earner.</div>
-      </div>
+      <div class="hint" style="margin-top:-4px;margin-bottom:12px">Combined: <b id="incomeV"></b>. Each person with income gets their own 401(k) and Social Security wage cap — enter actual salaries for the most accurate take-home.</div>
       <div class="field">
         <label>Cash on hand (savings) <b id="cashV"></b></label>
         <input type="number" id="cash" value="300000" step="5000">
         <input type="range" id="cashR" min="50000" max="1200000" step="5000" value="300000">
       </div>
       <div class="field">
-        <label>Emergency fund to keep <b id="efV"></b></label>
-        <input type="number" id="ef" value="50000" step="5000">
-        <input type="range" id="efR" min="0" max="200000" step="5000" value="50000">
-        <div class="hint">Preserved <i>after</i> down payment, closing, and points.</div>
+        <label>Emergency fund: months of housing <b id="efMonthsV"></b></label>
+        <input type="range" id="efMonths" min="0" max="12" step="1" value="6">
+        <div class="hint">Covers this many months of full housing payment (P&amp;I, tax, insurance, PMI, HOA) + utilities for the home in question.</div>
+      </div>
+      <div class="field">
+        <label>Emergency fund: extra fixed buffer <b id="efFixedV"></b></label>
+        <input type="number" id="efFixed" value="20000" step="5000">
+        <div class="hint">Added on top of the months above. Total EF is preserved <i>after</i> down payment, closing, and points.</div>
       </div>
       <div class="field">
         <label>Other monthly debt (car/student/etc.) <b id="debtV"></b></label>
@@ -269,15 +276,14 @@ function pmt(L,annual,years){if(L<=0)return 0;const r=annual/100/12,n=years*12;i
 
 // ---------- read inputs ----------
 function I(){
-  const income=+$('income').value, splitPct=+$('split').value/100;
-  const eA=income*splitPct, eB=income*(1-splitPct);
-  const earners=(eB>0?2:1);
+  const eA=+$('incomeA').value, eB=+$('incomeB').value, income=eA+eB;
+  const earners=(eA>0?1:0)+(eB>0?1:0);
   const sqft=+$('sqft').value;
   const utilManual=$('util').value.trim();
   const util=utilManual===''?(150+0.10*sqft):+utilManual;
   return {
     income, eA, eB, earners,
-    cash:+$('cash').value, ef:+$('ef').value, debt:+$('debt').value,
+    cash:+$('cash').value, efMonths:+$('efMonths').value, efFixed:+$('efFixed').value, debt:+$('debt').value,
     eit:+$('eit').value, ptax:+$('ptax').value,
     rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
     term:+$('term').value, pmi:+$('pmi').value, close:+$('close').value,
@@ -330,46 +336,62 @@ function scenario(p,price,downFrac){
   return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,cashToClose,core,comfortMonthly,totalMonthly};
 }
 
+// ---------- emergency fund: X months of housing+utilities + fixed buffer ----------
+function efFor(p,s){ return p.efMonths*(s.pi+s.pmi+s.tax+s.ins+s.hoa+s.util) + p.efFixed; }
+
 // ---------- max price for a fixed down fraction ----------
+// EF depends on the monthly payment (which depends on price), so both the
+// monthly-comfort and cash constraints are solved jointly via binary search.
 function maxForDownFrac(p,th,downFrac){
   const ceiling=p.comfort*th.netMo;
-  const avail=p.cash-p.ef;
-  // cash cap: down + closing%*price + points%*loan <= avail
-  // down=downFrac*price, loan=(1-downFrac)*price
-  const cashDenom=downFrac + p.close/100 + p.points/100*(1-downFrac);
-  const cashCap = avail>0 ? avail/cashDenom : 0;
-  // monthly cap via binary search on price (monotonic)
+  function feasible(price){
+    const s=scenario(p,price,downFrac);
+    if(s.comfortMonthly>ceiling) return false;
+    return s.cashToClose <= (p.cash - efFor(p,s));
+  }
   let lo=0,hi=8000000;
-  for(let i=0;i<60;i++){const mid=(lo+hi)/2;const s=scenario(p,mid,downFrac);(s.comfortMonthly<=ceiling)?lo=mid:hi=mid;}
-  const monthlyCap=lo;
-  const price=Math.max(0,Math.min(cashCap,monthlyCap));
-  const binding = monthlyCap<cashCap ? 'monthly comfort' : 'cash on hand';
-  return {price,binding,s:scenario(p,price,downFrac)};
+  for(let i=0;i<60;i++){const mid=(lo+hi)/2;feasible(mid)?lo=mid:hi=mid;}
+  const price=lo;
+  const s=scenario(p,price,downFrac);
+  const ef=efFor(p,s), cashAvail=p.cash-ef;
+  const cRatio=ceiling>0?s.comfortMonthly/ceiling:Infinity;
+  const kRatio=cashAvail>0?s.cashToClose/cashAvail:Infinity;
+  const binding = cRatio>=kRatio ? 'monthly comfort' : 'cash on hand';
+  return {price,binding,s,ef};
 }
 
 // ---------- all-cash-down: put every available dollar down ----------
 function maxAllCash(p,th){
   const ceiling=p.comfort*th.netMo;
-  const avail=p.cash-p.ef;
-  let lo=0,hi=8000000;
+  // For a given price, the max down and the EF are mutually dependent
+  // (more down -> smaller P&I -> smaller EF -> more cash for down). Iterate.
+  function solveDown(price){
+    let down=price*0.2;
+    for(let it=0;it<14;it++){
+      const s=scenario(p,price,price>0?down/price:0);
+      const avail=p.cash-efFor(p,s);
+      const closing=p.close/100*price;
+      let nd=(avail-closing-p.points/100*price)/(1-p.points/100);
+      if(nd<0) return null;          // can't cover closing+points even at 0 down
+      if(nd>price) nd=price;         // all cash, no loan
+      down=nd;
+    }
+    return down;
+  }
   function feasible(price){
-    // max down such that down+closing+points<=avail; loan=price-down
-    // down=(avail-close%*price-points%*price)/(1-points%)  [points on loan=price-down]
-    const closing=p.close/100*price;
-    let down=(avail-closing-p.points/100*price)/(1-p.points/100);
-    if(down<0) return false;            // can't even cover closing+points at 0 down
-    if(down>price) down=price;          // all cash, no loan
-    const s=scenario(p,price,down/price);
+    const down=solveDown(price);
+    if(down===null) return false;
+    const s=scenario(p,price,price>0?down/price:0);
     return s.comfortMonthly<=ceiling;
   }
+  let lo=0,hi=8000000;
   for(let i=0;i<60;i++){const mid=(lo+hi)/2;feasible(mid)?lo=mid:hi=mid;}
   const price=lo;
-  const closing=p.close/100*price;
-  let down=(avail-closing-p.points/100*price)/(1-p.points/100);
-  if(down>price)down=price; if(down<0)down=0;
-  const s=scenario(p,price,price>0?down/price:0);
-  const binding = (down/price>=0.999)?'cash (all cash, no loan)':'monthly comfort';
-  return {price,binding,s,downFrac:price>0?down/price:0};
+  const down=solveDown(price)||0;
+  const downFrac=price>0?down/price:0;
+  const s=scenario(p,price,downFrac);
+  const binding = (downFrac>=0.999)?'cash (all cash, no loan)':'monthly comfort';
+  return {price,binding,s,downFrac,ef:efFor(p,s)};
 }
 
 // ---------- optimizer: best down fraction ----------
@@ -387,8 +409,9 @@ function render(){
   syncPresetIfNeeded();
   const p=I();
   // labels
-  $('incomeV').textContent=fmt(p.income); $('cashV').textContent=fmt(p.cash); $('efV').textContent=fmt(p.ef);
-  $('splitV').textContent=(p.income*(+$('split').value/100)/1000).toFixed(0)+'k / '+(p.income*(1-(+$('split').value/100))/1000).toFixed(0)+'k';
+  $('incomeAV').textContent=fmt(p.eA); $('incomeBV').textContent=fmt(p.eB);
+  $('incomeV').textContent=fmt(p.income); $('cashV').textContent=fmt(p.cash);
+  $('efMonthsV').textContent=p.efMonths+' mo'; $('efFixedV').textContent=fmt(p.efFixed);
   $('debtV').textContent=fmt(p.debt)+'/mo';
   $('eitV').textContent=p.eit+'%'; $('ptaxV').textContent=p.ptax+'%';
   $('rateV').textContent=p.rate+'%'; $('pointsV').textContent=p.points+' pts';
@@ -466,8 +489,9 @@ function render(){
   const expPrice=+$('expPrice').value, expDown=+$('expDown').value/100;
   $('expPriceV').textContent=fmt(expPrice); $('expDownV').textContent=(expDown*100).toFixed(0)+'% ('+fmt(expPrice*expDown)+')';
   const es=scenario(p,expPrice,expDown);
+  const esEf=efFor(p,es);
   const egp=es.totalMonthly/th.grossMo*100, enp=es.totalMonthly/th.netMo*100;
-  const cashShort=es.cashToClose-(p.cash-p.ef);
+  const cashShort=es.cashToClose-(p.cash-esEf);
   const efAfter=p.cash-es.cashToClose;
   $('expHead').innerHTML=`${fmt(es.totalMonthly)}<small>/mo all-in &nbsp;·&nbsp; ${pct(egp)} of gross &nbsp;·&nbsp; ${pct(enp)} of take-home</small>`;
   $('expKpis').innerHTML=`
@@ -479,8 +503,8 @@ function render(){
   // flags
   const flags=[];
   flags.push(cashShort<=0
-    ? `<div class="flag">✅ Cash works — ${fmt(p.cash-es.cashToClose)} left, keeping the ${fmt(p.ef)} emergency fund ${efAfter>=p.ef?'intact':'<b style="color:var(--bad)">(short!)</b>'}.</div>`
-    : `<div class="flag">❌ <b style="color:var(--bad)">Short ${fmt(cashShort)} of cash</b> after preserving the emergency fund.</div>`);
+    ? `<div class="flag">✅ Cash works — ${fmt(p.cash-es.cashToClose)} left, keeping the ${fmt(esEf)} emergency fund ${efAfter>=esEf?'intact':'<b style="color:var(--bad)">(short!)</b>'}.</div>`
+    : `<div class="flag">❌ <b style="color:var(--bad)">Short ${fmt(cashShort)} of cash</b> after preserving the ${fmt(esEf)} emergency fund.</div>`);
   flags.push(es.ltv>0.80
     ? `<div class="flag">⚠️ Under 20% down → paying PMI (~${fmt(es.pmi)}/mo) until you reach 20% equity.</div>`
     : `<div class="flag">✅ ≥20% down → no PMI.</div>`);
@@ -506,8 +530,8 @@ function render(){
     <tr><td>Discount points (${p.points})</td><td>${fmt(es.pointsCost)}</td></tr>
     <tr class="total"><td>Cash to close</td><td>${fmt(es.cashToClose)}</td></tr>
     <tr><td>Cash on hand</td><td>${fmt(p.cash)}</td></tr>
-    <tr><td>Remaining after close</td><td style="color:${efAfter>=p.ef?'var(--good)':'var(--bad)'}">${fmt(efAfter)}</td></tr>
-    <tr><td>Emergency fund target</td><td>${fmt(p.ef)}</td></tr>
+    <tr><td>Remaining after close</td><td style="color:${efAfter>=esEf?'var(--good)':'var(--bad)'}">${fmt(efAfter)}</td></tr>
+    <tr><td>Emergency fund needed<br><span class="hint">${p.efMonths} mo × ${fmt(es.pi+es.pmi+es.tax+es.ins+es.hoa+es.util)}/mo + ${fmt(p.efFixed)}</span></td><td>${fmt(esEf)}</td></tr>
   </table>`;
 
   // ----- points analysis (on the explore loan) -----
@@ -531,6 +555,7 @@ function render(){
 
 function renderPoints(p,th,price,downFrac){
   const base=scenario(p,price,downFrac); // current points
+  const cashFree=p.cash-efFor(p,base);
   // compare 0 points vs current points (if any) and a few options
   const opts=[0,1,2,3];
   let rows='';
@@ -551,7 +576,6 @@ function renderPoints(p,th,price,downFrac){
       <td>${pt===0?'—':(isFinite(be)?be.toFixed(0)+' mo ('+(be/12).toFixed(1)+' yr)':'—')}</td>
     </tr>`;
   });
-  const cashFree=p.cash-p.ef;
   $('pointsAnalysis').innerHTML=`
     <div class="hint" style="margin-bottom:8px">On the explored ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(base.loan)}). Each point = 1% of loan, lowers rate ${p.buydown}%/pt. "Break-even" = months for monthly savings to repay the upfront cost.</div>
     <table>
@@ -578,7 +602,7 @@ function pair(numId,rangeId){
   n.addEventListener('input',()=>{r.value=n.value;render();});
   r.addEventListener('input',()=>{n.value=r.value;render();});
 }
-['income','cash','ef','rate'].forEach(id=>pair(id,id+'R'));
+['incomeA','incomeB','cash','rate'].forEach(id=>pair(id,id+'R'));
 
 // all inputs trigger render
 document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));

@@ -19,8 +19,11 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   breakdown (P&I, property tax, insurance, PMI, HOA, utilities, maintenance), cash-to-close
   breakdown, and flags for cash shortfalls / emergency-fund preservation / PMI / comfort.
 - **Points buy-down analysis.** Cost, monthly savings, and break-even for 0–3 discount points.
-- **Emergency fund guard.** Down payment + closing + points must leave your chosen emergency
-  fund intact.
+- **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
+  dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
+  closing + points must leave that emergency fund intact.
+- **Per-person income.** Enter each spouse's salary separately for accurate Social Security wage
+  caps and the right number of 401(k)s.
 
 ## Key assumptions (all editable in the UI)
 
