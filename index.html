@@ -294,6 +294,19 @@ function I(){
   };
 }
 
+// ---------- solo survivor take-home (one income, MFJ) ----------
+// contribute=false models "pull all strings": halt 401(k)+HSA to free cash
+// (which also raises taxes, since those were pre-tax). Returns annual net.
+function soloNet(p,e,contribute){
+  if(e<=0) return 0;
+  const c401=contribute?MAX_401K:0, hsa=contribute?HSA_FAMILY:0;
+  const fed=fedTax(Math.max(0,e-c401-hsa-STD_DED));
+  const w=Math.max(0,e-hsa);                 // FICA & PA/EIT base (HSA out, 401k in)
+  const ss=SS_RATE*Math.min(w,SS_WAGE_BASE);
+  const med=MED_RATE*w+MED_SURTAX*Math.max(0,w-MED_SURTAX_THR);
+  return e - c401 - hsa - fed - ss - med - PA_RATE*w - p.eit/100*w;
+}
+
 // ---------- take-home ----------
 function takeHome(p){
   const c401 = MAX_401K*p.earners;
@@ -322,8 +335,8 @@ function takeHome(p){
   const fedA=fed*fbA/fbTot, fedB=fed*fbB/fbTot;
   const netA=p.eA-c401A-hsaA-ssA-medA-fedA-PA_RATE*wA-p.eit/100*wA;
   const netB=p.eB-c401B-hsaB-ssB-medB-fedB-PA_RATE*wB-p.eit/100*wB;
-  const perA={gross:p.eA,net:netA,netMo:netA/12};
-  const perB={gross:p.eB,net:netB,netMo:netB/12};
+  const perA={gross:p.eA,net:netA,netMo:netA/12,soloMo:soloNet(p,p.eA,false)/12};
+  const perB={gross:p.eB,net:netB,netMo:netB/12,soloMo:soloNet(p,p.eB,false)/12};
   return {c401,hsa,fed,ss,med,pa,eit,totalTax,net,fedTI,grossMo:p.income/12,netMo:net/12,perA,perB};
 }
 
@@ -532,10 +545,16 @@ function render(){
   flags.push(`<div class="flag">${backEnd<=43?'✅':'⚠️'} Back-end DTI ${pct(backEnd)} ${backEnd<=43?'(within typical lender max of 43%)':'(above typical 43% lender max)'}.</div>`);
   // single-income resilience: can one salary alone carry mortgage + utilities?
   const hu=es.core+es.util; // PITI + PMI + HOA + utilities
-  [['A',th.perA,p.eA],['B',th.perB,p.eB]].forEach(([nm,per,inc])=>{
-    if(inc>0) flags.push(hu<=per.netMo
-      ? `<div class="flag">✅ On Person ${nm}'s income alone (${fmt(per.netMo)}/mo take-home) the mortgage + utilities (${fmt(hu)}/mo) is covered.</div>`
-      : `<div class="flag">🚩 <b style="color:var(--bad)">Person ${nm}'s income alone (${fmt(per.netMo)}/mo take-home) can't cover mortgage + utilities (${fmt(hu)}/mo)</b> — this home needs both incomes.</div>`);
+  [['A',th.perA,p.eA,'B'],['B',th.perB,p.eB,'A']].forEach(([nm,per,inc,other])=>{
+    if(inc<=0) return;
+    // (a) current paycheck alone
+    flags.push(hu<=per.netMo
+      ? `<div class="flag">✅ Person ${nm}'s current take-home (${fmt(per.netMo)}/mo) alone covers mortgage + utilities (${fmt(hu)}/mo).</div>`
+      : `<div class="flag">⚠️ Person ${nm}'s current take-home (${fmt(per.netMo)}/mo) alone doesn't cover mortgage + utilities (${fmt(hu)}/mo) — relies on both incomes.</div>`);
+    // (b) worst case: Person `other` loses their job, Person `nm` halts 401k+HSA
+    flags.push(hu<=per.soloMo
+      ? `<div class="flag">✅ Worst case (Person ${other} jobless, Person ${nm} halts 401k+HSA → ${fmt(per.soloMo)}/mo): still covers mortgage + utilities.</div>`
+      : `<div class="flag">🚩 <b style="color:var(--bad)">Worst case (Person ${other} jobless, Person ${nm} halts 401k+HSA → ${fmt(per.soloMo)}/mo): can't cover mortgage + utilities (${fmt(hu)}/mo).</b></div>`);
   });
   $('expFlags').innerHTML=flags.join('');
   $('expMonthly').innerHTML=`<table>
