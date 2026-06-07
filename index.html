@@ -192,15 +192,23 @@
     </div>
 
     <div class="panel">
-      <h2>Comfort target</h2>
-      <div class="field">
-        <label>Max housing cost as % of <i>take-home</i> <b id="comfortV"></b></label>
-        <input type="range" id="comfort" min="20" max="50" step="1" value="30">
-        <div class="hint">Drives the "max affordable" solver. The live % of gross &amp; net are always shown regardless.</div>
+      <h2>Monthly living expenses</h2>
+      <div class="hint" style="margin-bottom:10px">Mandatory spending <i>outside</i> of mortgage &amp; utilities. The max-affordable solver sets your housing budget = take-home − these − debt − cushion. Total mandatory: <b id="expensesTotalV"></b>/mo.</div>
+      <div class="row2">
+        <div class="field"><label>Food / groceries <b id="exFoodV"></b></label><input type="number" id="exFood" value="1500" step="50"></div>
+        <div class="field"><label>Childcare / daycare <b id="exCareV"></b></label><input type="number" id="exCare" value="0" step="100"></div>
       </div>
-      <label class="toggle"><input type="checkbox" id="incMaint" checked> Count maintenance toward the comfort budget</label>
+      <div class="row2">
+        <div class="field"><label>Cars / transport <b id="exCarV"></b></label><input type="number" id="exCar" value="800" step="50"></div>
+        <div class="field"><label>Insurance (health/life/auto) <b id="exMiscV"></b></label><input type="number" id="exMisc" value="600" step="50"></div>
+      </div>
+      <div class="field"><label>Everything else <b id="exOtherV"></b></label><input type="number" id="exOther" value="1000" step="100">
+        <div class="hint">Subscriptions, kids' activities, travel, gifts, pets, etc. (Car/student loan <i>payments</i> go in "Other monthly debt" above.)</div></div>
+      <div class="field"><label>Monthly cushion to keep <b id="cushionV"></b></label><input type="number" id="cushion" value="1500" step="100">
+        <div class="hint">Minimum left over each month after housing + expenses — savings/discretionary breathing room. This is what makes a budget "comfortable."</div></div>
+      <label class="toggle"><input type="checkbox" id="incMaint" checked> Count maintenance reserve as part of housing</label>
       <br>
-      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="incUtil" checked> Count utilities toward the comfort budget</label>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="incUtil" checked> Count utilities as part of housing</label>
     </div>
   </div>
 
@@ -239,7 +247,7 @@
       </div>
       <div class="bignum" id="expHead"></div>
       <div class="kpis" id="expKpis"></div>
-      <div style="margin-top:6px"><span class="hint">Housing vs take-home pay</span><div class="barwrap"><div class="bar" id="expBar"></div></div></div>
+      <div style="margin-top:6px"><span class="hint" id="expBarLabel">Spent vs take-home pay</span><div class="barwrap"><div class="bar" id="expBar"></div></div></div>
       <div class="flags" id="expFlags"></div>
       <details open><summary>Monthly payment breakdown</summary><div id="expMonthly"></div></details>
       <details><summary>Cash-to-close breakdown</summary><div id="expCash"></div></details>
@@ -289,7 +297,8 @@ function I(){
     rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
     term:+$('term').value, pmi:+$('pmi').value, close:+$('close').value,
     ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
-    comfort:+$('comfort').value/100,
+    expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
+    cushion:+$('cushion').value,
     incMaint:$('incMaint').checked, incUtil:$('incUtil').checked
   };
 }
@@ -369,7 +378,7 @@ function efFor(p,s){ return p.efMonths*(s.pi+s.pmi+s.tax+s.ins+s.hoa+s.util) + p
 // EF depends on the monthly payment (which depends on price), so both the
 // monthly-comfort and cash constraints are solved jointly via binary search.
 function maxForDownFrac(p,th,downFrac){
-  const ceiling=p.comfort*th.netMo;
+  const ceiling=Math.max(0, th.netMo - p.expenses - p.debt - p.cushion); // housing budget
   function feasible(price){
     const s=scenario(p,price,downFrac);
     if(s.comfortMonthly>ceiling) return false;
@@ -382,13 +391,13 @@ function maxForDownFrac(p,th,downFrac){
   const ef=efFor(p,s), cashAvail=p.cash-ef;
   const cRatio=ceiling>0?s.comfortMonthly/ceiling:Infinity;
   const kRatio=cashAvail>0?s.cashToClose/cashAvail:Infinity;
-  const binding = cRatio>=kRatio ? 'monthly comfort' : 'cash on hand';
+  const binding = cRatio>=kRatio ? 'monthly budget' : 'cash on hand';
   return {price,binding,s,ef};
 }
 
 // ---------- all-cash-down: put every available dollar down ----------
 function maxAllCash(p,th){
-  const ceiling=p.comfort*th.netMo;
+  const ceiling=Math.max(0, th.netMo - p.expenses - p.debt - p.cushion); // housing budget
   // For a given price, the max down and the EF are mutually dependent
   // (more down -> smaller P&I -> smaller EF -> more cash for down). Iterate.
   function solveDown(price){
@@ -416,7 +425,7 @@ function maxAllCash(p,th){
   const down=solveDown(price)||0;
   const downFrac=price>0?down/price:0;
   const s=scenario(p,price,downFrac);
-  const binding = (downFrac>=0.999)?'cash (all cash, no loan)':'monthly comfort';
+  const binding = (downFrac>=0.999)?'cash (all cash, no loan)':'monthly budget';
   return {price,binding,s,downFrac,ef:efFor(p,s)};
 }
 
@@ -444,7 +453,8 @@ function render(){
   $('buydownV').textContent=p.buydown+'%'; $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%';
   $('insV').textContent=p.ins+'%'; $('maintV').textContent=p.maint+'%'; $('hoaV').textContent=fmt(p.hoa)+'/mo';
   $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
-  $('comfortV').textContent=(p.comfort*100).toFixed(0)+'%';
+  ['exFood','exCare','exCar','exMisc','exOther'].forEach(id=>{const e=$(id+'V'); if(e) e.textContent=fmt(+$(id).value);});
+  $('cushionV').textContent=fmt(p.cushion); $('expensesTotalV').textContent=fmt(p.expenses);
   // keep number<->range pairs in sync done via listeners
 
   const th=takeHome(p);
@@ -504,7 +514,7 @@ function render(){
   let recMsg;
   if(opt.price>twenty.price+15000){
     recMsg=`Putting <b>${(opt.downFrac*100).toFixed(0)}% down</b> gets you the most house (~${fmt(opt.price)})`;
-    if(opt.downFrac<0.20) recMsg+=` — accepting PMI of ~${fmt(opt.s.pmi)}/mo lets you stretch the budget because your monthly comfort limit, not cash, is the binding constraint.`;
+    if(opt.downFrac<0.20) recMsg+=` — accepting PMI of ~${fmt(opt.s.pmi)}/mo lets you stretch because your monthly budget (take-home − expenses − cushion), not cash, is the binding constraint.`;
     else recMsg+=`, with cash as the limiting factor.`;
   } else {
     recMsg=`<b>20% down</b> (~${fmt(twenty.price)}) is your sweet spot — it avoids PMI and the optimizer can't beat it meaningfully.`;
@@ -523,13 +533,17 @@ function render(){
   const egp=es.totalMonthly/th.grossMo*100, enp=es.totalMonthly/th.netMo*100;
   const cashShort=es.cashToClose-(p.cash-esEf);
   const efAfter=p.cash-es.cashToClose;
+  const leftover = th.netMo - es.totalMonthly - p.expenses - p.debt; // discretionary/savings left each month
   $('expHead').innerHTML=`${fmt(es.totalMonthly)}<small>/mo all-in &nbsp;·&nbsp; ${pct(egp)} of gross &nbsp;·&nbsp; ${pct(enp)} of take-home</small>`;
   $('expKpis').innerHTML=`
     <div class="kpi"><div class="v">${fmt(es.pi)}</div><div class="l">P&amp;I @ ${es.eff.toFixed(2)}%</div></div>
     <div class="kpi"><div class="v">${es.pmi>0?fmt(es.pmi):'—'}</div><div class="l">PMI (${(es.ltv*100).toFixed(0)}% LTV)</div></div>
-    <div class="kpi"><div class="v">${fmt(es.cashToClose)}</div><div class="l">Cash to close</div></div>`;
-  $('expBar').style.width=Math.min(100,enp)+'%';
-  $('expBar').style.background = enp<=30?'linear-gradient(90deg,#34d399,#38bdf8)' : enp<=40?'linear-gradient(90deg,#fbbf24,#38bdf8)':'linear-gradient(90deg,#f87171,#fbbf24)';
+    <div class="kpi"><div class="v">${fmt(es.cashToClose)}</div><div class="l">Cash to close</div></div>
+    <div class="kpi"><div class="v" style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</div><div class="l">Leftover / mo</div></div>`;
+  const spentPct = Math.min(100,(es.totalMonthly+p.expenses+p.debt)/th.netMo*100);
+  $('expBarLabel').textContent=`Housing + expenses + debt = ${pct(spentPct)} of take-home · ${fmt(leftover)}/mo left`;
+  $('expBar').style.width=spentPct+'%';
+  $('expBar').style.background = leftover>=p.cushion?'linear-gradient(90deg,#34d399,#38bdf8)' : leftover>=0?'linear-gradient(90deg,#fbbf24,#38bdf8)':'linear-gradient(90deg,#f87171,#fbbf24)';
   // flags
   const flags=[];
   flags.push(cashShort<=0
@@ -538,9 +552,11 @@ function render(){
   flags.push(es.ltv>0.80
     ? `<div class="flag">⚠️ Under 20% down → paying PMI (~${fmt(es.pmi)}/mo) until you reach 20% equity.</div>`
     : `<div class="flag">✅ ≥20% down → no PMI.</div>`);
-  flags.push(enp<=p.comfort*100
-    ? `<div class="flag">✅ Within your comfort target (${pct(enp)} ≤ ${(p.comfort*100).toFixed(0)}% of take-home).</div>`
-    : `<div class="flag">⚠️ Above your comfort target (${pct(enp)} > ${(p.comfort*100).toFixed(0)}% of take-home).</div>`);
+  flags.push(leftover>=p.cushion
+    ? `<div class="flag">✅ ${fmt(leftover)}/mo left after housing + expenses — meets your ${fmt(p.cushion)} cushion (${pct(enp)} of take-home on housing).</div>`
+    : leftover>=0
+      ? `<div class="flag">⚠️ Only ${fmt(leftover)}/mo left after housing + expenses — below your ${fmt(p.cushion)} cushion.</div>`
+      : `<div class="flag">🚩 <b style="color:var(--bad)">Negative ${fmt(leftover)}/mo — housing + expenses exceed take-home.</b></div>`);
   const backEnd=(es.totalMonthly+p.debt)/th.grossMo*100;
   flags.push(`<div class="flag">${backEnd<=43?'✅':'⚠️'} Back-end DTI ${pct(backEnd)} ${backEnd<=43?'(within typical lender max of 43%)':'(above typical 43% lender max)'}.</div>`);
   // single-income resilience: can one salary alone carry mortgage + utilities?
