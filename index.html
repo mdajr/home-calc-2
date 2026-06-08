@@ -59,7 +59,7 @@
 <body>
 <header>
   <h1>🏡 Chester County Home Affordability Calculator</h1>
-  <div class="sub">Downingtown / Exton / West Chester — WCASD &amp; DASD. Tuned for MFJ households maxing 401(k) + HSA. All figures editable; everything updates live.</div>
+  <div class="sub">Downingtown / Exton / West Chester — WCASD &amp; DASD. Tuned for MFJ households maxing 401(k) + HSA. All figures editable; everything updates live. Your entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a>.</div>
 </header>
 
 <div class="wrap">
@@ -674,10 +674,37 @@ function pair(numId,rangeId){
 }
 ['incomeA','incomeB','cash','rate'].forEach(id=>pair(id,id+'R'));
 
-// all inputs trigger render
-document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));
-$('preset').addEventListener('change',()=>{lastPreset='';render();});
+// ---------- persistence (localStorage) ----------
+const LS_KEY='homecalc_v1';
+function saveState(){
+  try{
+    const data={};
+    document.querySelectorAll('input,select').forEach(el=>{
+      if(!el.id) return;
+      data[el.id] = (el.type==='checkbox') ? el.checked : el.value;
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+  }catch(e){}
+}
+function loadState(){
+  try{
+    const data=JSON.parse(localStorage.getItem(LS_KEY)||'null');
+    if(!data) return;
+    document.querySelectorAll('input,select').forEach(el=>{
+      if(!el.id || !(el.id in data)) return;
+      if(el.type==='checkbox') el.checked=data[el.id]; else el.value=data[el.id];
+    });
+  }catch(e){}
+}
 
+// all inputs trigger render (+ save)
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>{render();saveState();}));
+$('preset').addEventListener('change',()=>{lastPreset='';render();saveState();});
+window.resetSaved=function(){ try{localStorage.removeItem(LS_KEY);}catch(e){} location.reload(); };
+
+// restore saved values before the first render; keep preset from clobbering restored EIT/tax
+loadState();
+lastPreset=$('preset').value;
 render();
 </script>
 </body>
