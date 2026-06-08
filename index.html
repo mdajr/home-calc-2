@@ -515,8 +515,9 @@ function render(){
   }
   $('rec').innerHTML='💡 '+recMsg+' &nbsp;Drag the explorer below to a target price to pressure-test the monthly numbers.';
 
-  // sync explore slider ranges to optimized result
-  const expHi=Math.max(2000000, Math.ceil(opt.price*1.3/50000)*50000);
+  // sync explore slider max to the optimized result — but never below the
+  // current value, so changing other fields can't silently clamp the explorer.
+  const expHi=Math.max(2000000, Math.ceil(opt.price*1.3/50000)*50000, Math.ceil((+$('expPrice').value)*1.05/50000)*50000);
   $('expPrice').max=expHi;
 
   // ----- explore -----
@@ -661,7 +662,7 @@ window.loadStrat=function(price,dpPct){
   if(price>+ep.max) ep.max=Math.ceil(price*1.1/50000)*50000;
   ep.value=Math.round(price);
   $('expDown').value=Math.round(dpPct);
-  render();
+  render(); saveState(); // programmatic change doesn't fire 'input', so persist explicitly
   document.getElementById('expHead').scrollIntoView({behavior:'smooth',block:'center'});
 };
 
@@ -690,6 +691,7 @@ function loadState(){
   try{
     const data=JSON.parse(localStorage.getItem(LS_KEY)||'null');
     if(!data) return;
+    $('expPrice').max=100000000; // raise before restoring so a large saved price isn't clamped (render resets it)
     document.querySelectorAll('input,select').forEach(el=>{
       if(!el.id || !(el.id in data)) return;
       if(el.type==='checkbox') el.checked=data[el.id]; else el.value=data[el.id];
