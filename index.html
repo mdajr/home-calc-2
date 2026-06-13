@@ -15,6 +15,7 @@
   header{padding:24px 20px 8px;max-width:1200px;margin:0 auto}
   h1{font-size:1.5rem;margin:0 0 4px}
   .sub{color:var(--muted);font-size:.9rem}
+  .sharemsg{color:var(--good);font-size:.82rem;margin-left:6px}
   .wrap{max-width:1200px;margin:0 auto;padding:16px 20px 60px;display:grid;grid-template-columns:360px 1fr;gap:20px}
   @media(max-width:900px){.wrap{grid-template-columns:1fr}}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -59,7 +60,7 @@
 <body>
 <header>
   <h1>🏡 Chester County Home Affordability Calculator</h1>
-  <div class="sub">Downingtown / Exton / West Chester — WCASD &amp; DASD. Tuned for MFJ households maxing 401(k) + HSA. All figures editable; everything updates live. Your entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a>.</div>
+  <div class="sub">Downingtown / Exton / West Chester — WCASD &amp; DASD. Tuned for MFJ households maxing 401(k) + HSA. All figures editable; everything updates live. Your entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a> · <a href="#" onclick="return copyShare(event);">🔗 copy a share link</a> for this exact scenario.<span id="shareMsg" class="sharemsg"></span></div>
 </header>
 
 <div class="wrap">
@@ -105,26 +106,16 @@
     <div class="panel">
       <h2>Location (taxes)</h2>
       <div class="field">
-        <label>Township / school district</label>
-        <select id="preset">
-          <option value="wc_goshen" selected>West/East Goshen — WCASD</option>
-          <option value="wc_whiteland">West Whiteland (Exton) — WCASD</option>
-          <option value="dt_boro">Downingtown Borough — DASD</option>
-          <option value="dt_uwchlan">Uwchlan/Exton — DASD</option>
-          <option value="custom">Custom</option>
-        </select>
+        <label>Local EIT % <b id="eitV"></b></label>
+        <input type="number" id="eit" value="1.0" step="0.05">
+        <div class="hint">Local earned-income tax. Most Chester County townships are 1.0%.</div>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label>Local EIT % <b id="eitV"></b></label>
-          <input type="number" id="eit" value="1.0" step="0.05">
-        </div>
-        <div class="field">
-          <label>Property tax % of price <b id="ptaxV"></b></label>
-          <input type="number" id="ptax" value="1.0" step="0.05">
-        </div>
+      <div class="field">
+        <label>Property tax % of price <b id="ptaxV"></b></label>
+        <input type="number" id="ptax" value="1.25" step="0.025">
+        <input type="range" id="ptaxR" min="1" max="2" step="0.025" value="1.25">
+        <div class="hint">Effective rate on today's price (2025 millage × Chester County CLR 30.6%). Reference points: WCASD townships ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%. Bills vary by the home's 1998-base assessment — slide, or type a value below 1% / above 2% for a specific listing.</div>
       </div>
-      <div class="hint">Property tax = 2025 millage × Chester County CLR (30.6%). Real bills vary by the home's 1998-base assessment — adjust if you have a specific listing.</div>
     </div>
 
     <div class="panel">
@@ -240,7 +231,8 @@
         </div>
         <div class="field">
           <label>Down payment <b id="expDownV"></b></label>
-          <input type="range" id="expDown" min="20" max="100" step="1" value="20">
+          <input type="range" id="expDown" min="5" max="100" step="1" value="20">
+          <div class="hint">Below 20% adds PMI (shown below) but frees up cash — handy if you'd rather keep it for renovations.</div>
         </div>
       </div>
       <div class="bignum" id="expHead"></div>
@@ -268,10 +260,6 @@
 const STD_DED=32200, SS_WAGE_BASE=184500, SS_RATE=0.062, MED_RATE=0.0145, MED_SURTAX=0.009, MED_SURTAX_THR=250000;
 const PA_RATE=0.0307, MAX_401K=24500, HSA_FAMILY=8750;
 const FED=[[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]];
-const PRESETS={
-  wc_goshen:{eit:1.00,ptax:1.00}, wc_whiteland:{eit:1.00,ptax:1.00},
-  dt_boro:{eit:1.00,ptax:1.25}, dt_uwchlan:{eit:1.00,ptax:1.25}, custom:{eit:1.00,ptax:1.10}
-};
 
 // ---------- helpers ----------
 const $=id=>document.getElementById(id);
@@ -438,7 +426,6 @@ function optimize(p,th){
 
 // ---------- render ----------
 function render(){
-  syncPresetIfNeeded();
   const p=I();
   // labels
   $('incomeAV').textContent=fmt(p.eA); $('incomeBV').textContent=fmt(p.eB);
@@ -601,8 +588,8 @@ function render(){
   // ----- assumptions -----
   $('assump').innerHTML=`
     <b>Tax year 2026, MFJ.</b> Std deduction $${STD_DED.toLocaleString()}; SS wage base $${SS_WAGE_BASE.toLocaleString()}/person; 401(k) $${MAX_401K.toLocaleString()}/person; HSA family $${HSA_FAMILY.toLocaleString()}.
-    PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT &amp; property-tax presets for Chester County townships (most 1.0%; East Whiteland 0.8%).
-    Property tax derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%.<br>
+    PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
+    Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%.<br>
     Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
     <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k)/limits</a> ·
@@ -646,16 +633,6 @@ function renderPoints(p,th,price,downFrac){
     <div class="note">With ${fmt(cashFree)} of cash above your emergency fund, points compete with your down payment. Buying points helps most if you'll <b>keep the loan past the break-even</b> (often 4–7 yrs) and your budget is monthly-constrained. If you're cash-constrained, that money usually does more as down payment (shrinks the loan <i>and</i> can kill PMI).</div>`;
 }
 
-// ---------- preset handling ----------
-let lastPreset='wc_goshen';
-function syncPresetIfNeeded(){
-  const sel=$('preset').value;
-  if(sel!==lastPreset && sel!=='custom'){
-    $('eit').value=PRESETS[sel].eit; $('ptax').value=PRESETS[sel].ptax;
-  }
-  lastPreset=sel;
-}
-
 // ---------- load a strategy row into the explorer (so monthly numbers match) ----------
 window.loadStrat=function(price,dpPct){
   const ep=$('expPrice');
@@ -673,40 +650,74 @@ function pair(numId,rangeId){
   n.addEventListener('input',()=>{r.value=n.value;render();});
   r.addEventListener('input',()=>{n.value=r.value;render();});
 }
-['incomeA','incomeB','cash','rate'].forEach(id=>pair(id,id+'R'));
+['incomeA','incomeB','cash','rate','ptax'].forEach(id=>pair(id,id+'R'));
 
-// ---------- persistence (localStorage) ----------
+// ---------- persistence (localStorage) + shareable links ----------
 const LS_KEY='homecalc_v1';
-function saveState(){
-  try{
-    const data={};
-    document.querySelectorAll('input,select').forEach(el=>{
-      if(!el.id) return;
-      data[el.id] = (el.type==='checkbox') ? el.checked : el.value;
-    });
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-  }catch(e){}
+// snapshot every input/select value into a plain object keyed by element id
+function collectState(){
+  const data={};
+  document.querySelectorAll('input,select').forEach(el=>{
+    if(!el.id) return;
+    data[el.id] = (el.type==='checkbox') ? el.checked : el.value;
+  });
+  return data;
 }
-function loadState(){
-  try{
-    const data=JSON.parse(localStorage.getItem(LS_KEY)||'null');
-    if(!data) return;
-    $('expPrice').max=100000000; // raise before restoring so a large saved price isn't clamped (render resets it)
-    document.querySelectorAll('input,select').forEach(el=>{
-      if(!el.id || !(el.id in data)) return;
-      if(el.type==='checkbox') el.checked=data[el.id]; else el.value=data[el.id];
-    });
-  }catch(e){}
+// write a snapshot back onto the controls (does NOT fire input events / save)
+function applyState(data){
+  if(!data) return;
+  $('expPrice').max=100000000; // raise before restoring so a large saved value isn't clamped (render resets it)
+  document.querySelectorAll('input,select').forEach(el=>{
+    if(!el.id || !(el.id in data)) return;
+    if(el.type==='checkbox') el.checked=data[el.id]; else el.value=data[el.id];
+  });
 }
+function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(collectState())); }catch(e){} }
+function loadState(){ try{ applyState(JSON.parse(localStorage.getItem(LS_KEY)||'null')); }catch(e){} }
+
+// --- shareable links: pack the whole scenario into the URL hash ---
+// UTF-8-safe base64, then URI-encoded so chat apps don't mangle + / =
+function encodeState(d){ return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(d))))); }
+function decodeState(s){ return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(s))))); }
+function shareURL(){ return location.href.split('#')[0] + '#s=' + encodeState(collectState()); }
+// If opened with a #s=... scenario, apply it and strip the hash so the
+// visitor's own later edits (saved to localStorage) win on reload. We do NOT
+// overwrite their saved entries up front — viewing a link is non-destructive.
+function loadFromURL(){
+  const m=location.hash.match(/[#&]s=([^&]+)/);
+  if(!m) return false;
+  try{
+    applyState(decodeState(m[1]));
+    try{ history.replaceState(null,'',location.href.split('#')[0]); }catch(e){}
+    return true;
+  }catch(e){ return false; }
+}
+window.copyShare=function(ev){
+  if(ev) ev.preventDefault();
+  const url=shareURL(), msg=$('shareMsg');
+  const done=ok=>{
+    if(!msg) return;
+    if(ok){ msg.textContent='✓ Link copied — it opens this exact scenario.'; }
+    else{ msg.textContent='Couldn’t copy automatically — press ⌘/Ctrl-C to copy from the address bar.';
+          try{ history.replaceState(null,'','#s='+encodeState(collectState())); }catch(e){} }
+    setTimeout(()=>{ if(msg) msg.textContent=''; },5000);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>done(true),()=>done(false));
+  }else{
+    try{ const t=document.createElement('textarea'); t.value=url; t.style.position='fixed'; t.style.opacity='0';
+         document.body.appendChild(t); t.select(); const ok=document.execCommand('copy'); document.body.removeChild(t); done(ok); }
+    catch(e){ done(false); }
+  }
+  return false;
+};
 
 // all inputs trigger render (+ save)
 document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>{render();saveState();}));
-$('preset').addEventListener('change',()=>{lastPreset='';render();saveState();});
 window.resetSaved=function(){ try{localStorage.removeItem(LS_KEY);}catch(e){} location.reload(); };
 
-// restore saved values before the first render; keep preset from clobbering restored EIT/tax
-loadState();
-lastPreset=$('preset').value;
+// apply a shared scenario from the URL if present, otherwise restore this browser's saved values
+if(!loadFromURL()) loadState();
 render();
 </script>
 </body>

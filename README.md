@@ -25,6 +25,8 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 - **"Explore a specific home" panel.** Price + down-payment sliders with a full monthly
   breakdown (P&I, property tax, insurance, PMI, HOA, utilities, maintenance), cash-to-close
   breakdown, monthly leftover, and flags for cash shortfalls / emergency-fund preservation / PMI.
+  The down-payment slider goes **below 20%** (down to 5%) — PMI is added automatically — which is
+  useful when you'd rather keep cash on hand for renovations than sink it into the down payment.
 - **Single-income resilience flags.** Per person: whether their current paycheck alone covers
   mortgage + utilities, and a worst case where the other person is jobless and this person halts
   401(k)/HSA to free up every dollar.
@@ -34,6 +36,11 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   closing + points must leave that emergency fund intact.
 - **Per-person income & take-home.** Enter each spouse's salary separately for accurate Social
   Security wage caps and the right number of 401(k)s; see each person's monthly take-home.
+- **Shareable links.** "Copy a share link" in the header packs every input — including the specific
+  home you're exploring — into a URL. Send it and the recipient opens that exact scenario. Opening a
+  link is non-destructive: it shows the shared numbers without overwriting the visitor's own saved
+  entries, and once they tweak anything it becomes their working state. Normal use still
+  auto-saves to the browser at the plain URL.
 
 ## Key assumptions (all editable in the UI)
 
@@ -44,12 +51,14 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | 401(k) limit / person | $24,500 |
 | HSA family limit | $8,750 |
 | PA income tax | 3.07% (taxes 401k, not HSA) |
-| Local EIT | 1.0% most townships (East Whiteland 0.8%) |
-| Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25% of price |
+| Local EIT | 1.0% most townships (editable) |
+| Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328% of price |
 
 Property tax is the biggest local unknown: Chester County still assesses off a 1998 base, so the
 effective rate on a today's-price home is lower than headline millage suggests — but it varies by
-the specific property's assessment. Adjust the field for a real listing.
+the specific property's assessment. There are **no township presets** — set the effective rate
+directly with the slider (1–2%) or type any value (you can go below 1% or above 2%) for a real
+listing.
 
 > Estimates only — not financial advice. Take-home uses the standard deduction (itemizing
 > mortgage interest + SALT could raise it), so results lean conservative. Verify any property's
