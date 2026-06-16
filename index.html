@@ -141,6 +141,11 @@
           <select id="term"><option value="30">30 yr</option><option value="15">15 yr</option></select>
         </div>
       </div>
+      <div class="field">
+        <label>15-yr rate discount <b id="term15discV"></b></label>
+        <input type="number" id="term15disc" value="0.75" step="0.05">
+        <div class="hint">15-yr loans usually price ~0.5–0.75% below a 30-yr. Applied automatically to the 15-yr column in the comparison below — and to the whole calculator whenever the loan term above is set to 15 yr.</div>
+      </div>
       <div class="row2">
         <div class="field">
           <label>PMI %/yr (if &lt;20% down) <b id="pmiV"></b></label>
@@ -239,6 +244,7 @@
       <div class="kpis" id="expKpis"></div>
       <div style="margin-top:6px"><span class="hint" id="expBarLabel">Spent vs take-home pay</span><div class="barwrap"><div class="bar" id="expBar"></div></div></div>
       <div class="flags" id="expFlags"></div>
+      <details open><summary>30-yr vs 15-yr comparison</summary><div id="termCompare"></div></details>
       <details open><summary>Monthly payment breakdown</summary><div id="expMonthly"></div></details>
       <details><summary>Cash-to-close breakdown</summary><div id="expCash"></div></details>
     </div>
@@ -281,7 +287,7 @@ function I(){
     cash:+$('cash').value, efMonths:+$('efMonths').value, efFixed:+$('efFixed').value, debt:+$('debt').value,
     eit:+$('eit').value, ptax:+$('ptax').value,
     rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
-    term:+$('term').value, pmi:+$('pmi').value, close:+$('close').value,
+    term:+$('term').value, term15disc:+$('term15disc').value, pmi:+$('pmi').value, close:+$('close').value,
     ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
     expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
     cushion:+$('cushion').value
@@ -339,7 +345,8 @@ function scenario(p,price,downFrac){
   const down=price*downFrac;
   const loan=price-down;
   const ltv=loan/price;
-  const eff=Math.max(0.5, p.rate - p.points*p.buydown); // effective rate after points
+  const termDisc=(p.term===15)? (p.term15disc||0) : 0; // 15-yr loans price below 30-yr
+  const eff=Math.max(0.5, p.rate - p.points*p.buydown - termDisc); // effective rate after points & term
   const pi=pmt(loan,eff,p.term);
   const pmi=(ltv>0.80)? p.pmi/100*loan/12 : 0;
   const tax=p.ptax/100*price/12;
@@ -434,7 +441,8 @@ function render(){
   $('debtV').textContent=fmt(p.debt)+'/mo';
   $('eitV').textContent=p.eit+'%'; $('ptaxV').textContent=p.ptax+'%';
   $('rateV').textContent=p.rate+'%'; $('pointsV').textContent=p.points+' pts';
-  $('buydownV').textContent=p.buydown+'%'; $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%';
+  $('buydownV').textContent=p.buydown+'%'; $('term15discV').textContent='−'+p.term15disc+'%';
+  $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%';
   $('insV').textContent=p.ins+'%'; $('maintV').textContent=p.maint+'%'; $('hoaV').textContent=fmt(p.hoa)+'/mo';
   $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
   ['exFood','exCare','exCar','exMisc','exOther'].forEach(id=>{const e=$(id+'V'); if(e) e.textContent=fmt(+$(id).value);});
@@ -582,6 +590,9 @@ function render(){
     <tr><td>Emergency fund needed<br><span class="hint">${p.efMonths} mo × ${fmt(es.pi+es.pmi+es.tax+es.ins+es.hoa+es.util)}/mo + ${fmt(p.efFixed)}</span></td><td>${fmt(esEf)}</td></tr>
   </table>`;
 
+  // ----- 30-yr vs 15-yr comparison (on the explored home) -----
+  renderTermCompare(p,th,expPrice,expDown);
+
   // ----- points analysis (on the explore loan) -----
   renderPoints(p,th,expPrice,expDown);
 
@@ -589,7 +600,8 @@ function render(){
   $('assump').innerHTML=`
     <b>Tax year 2026, MFJ.</b> Std deduction $${STD_DED.toLocaleString()}; SS wage base $${SS_WAGE_BASE.toLocaleString()}/person; 401(k) $${MAX_401K.toLocaleString()}/person; HSA family $${HSA_FAMILY.toLocaleString()}.
     PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
-    Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%.<br>
+    Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%.
+    Mortgage term defaults to 30 yr; a 15-yr loan is modeled at your base rate minus the 15-yr discount (default ${p.term15disc}%, since 15-yr loans typically price ~0.5–0.75% below 30-yr). Lifetime-interest figures are P&amp;I only and assume the loan is held to term.<br>
     Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
     <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k)/limits</a> ·
@@ -599,6 +611,37 @@ function render(){
     <a href="https://www.dasd.org/departments/business/taxes" target="_blank">DASD taxes</a> ·
     <a href="https://www.wcasd.net" target="_blank">WCASD</a>.
     <br><i>Estimates only — not financial advice. Verify a specific property's assessment and get lender quotes.</i>`;
+}
+
+// ---------- 30-yr vs 15-yr side-by-side (same price & down) ----------
+function renderTermCompare(p,th,price,downFrac){
+  const cols=[30,15].map(yrs=>{
+    const pp=Object.assign({},p,{term:yrs});
+    const s=scenario(pp,price,downFrac);
+    const totalPaid=s.pi*yrs*12;        // P&I only over the life of the loan
+    const interest=totalPaid-s.loan;
+    const leftover=th.netMo - s.totalMonthly - p.expenses - p.debt;
+    return {yrs,s,totalPaid,interest,leftover};
+  });
+  const [c30,c15]=cols;
+  const piDiff=c15.s.pi-c30.s.pi;          // extra monthly cost of the 15-yr
+  const intSave=c30.interest-c15.interest; // lifetime interest saved by the 15-yr
+  const cell=(c,fn)=>`<td>${fn(c)}</td>`;
+  const row=(label,fn)=>`<tr><td>${label}</td>${cell(c30,fn)}${cell(c15,fn)}</tr>`;
+  $('termCompare').innerHTML=`
+    <div class="hint" style="margin-bottom:8px">Same ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(c30.s.loan)}). 15-yr rate = your ${p.rate}% base − ${p.term15disc}% discount${p.points>0?', less points':''} = <b>${c15.s.eff.toFixed(2)}%</b> vs 30-yr <b>${c30.s.eff.toFixed(2)}%</b>.</div>
+    <table>
+      <thead><tr><th></th><th>30-yr</th><th>15-yr</th></tr></thead>
+      <tbody>
+        ${row('Rate (after points/term)',c=>c.s.eff.toFixed(2)+'%')}
+        ${row('Principal &amp; interest /mo',c=>fmt(c.s.pi))}
+        ${row('Total housing /mo',c=>fmt(c.s.core))}
+        ${row('Leftover /mo',c=>`<span style="color:${c.leftover>=p.cushion?'var(--good)':c.leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(c.leftover)}</span>`)}
+        ${row('Lifetime interest',c=>fmt(c.interest))}
+        ${row('Total P&amp;I paid',c=>fmt(c.totalPaid))}
+      </tbody>
+    </table>
+    <div class="note">The 15-yr costs <b>${fmt(piDiff)}/mo more</b> in P&amp;I but pays off <b>15 years sooner</b> and saves <b>${fmt(intSave)}</b> in interest over the life of the loan. The bigger 15-yr payment also raises your emergency-fund target and shrinks monthly slack — check the leftover row above stays above your ${fmt(p.cushion)} cushion. To run the full affordability table on a 15-yr, switch <b>Loan term</b> to 15 yr.</div>`;
 }
 
 function renderPoints(p,th,price,downFrac){

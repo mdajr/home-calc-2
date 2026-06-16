@@ -27,6 +27,11 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   breakdown, monthly leftover, and flags for cash shortfalls / emergency-fund preservation / PMI.
   The down-payment slider goes **below 20%** (down to 5%) — PMI is added automatically — which is
   useful when you'd rather keep cash on hand for renovations than sink it into the down payment.
+- **30-yr vs 15-yr comparison.** A side-by-side block in the explorer shows the monthly P&I, total
+  housing, monthly leftover, and lifetime interest for both terms on the same home. The 15-yr is
+  priced at your base rate minus a configurable discount (default 0.75%, since 15-yr loans typically
+  price below 30-yr). Switch the **Loan term** selector to 15 yr to run the full affordability table
+  on a 15-yr instead.
 - **Single-income resilience flags.** Per person: whether their current paycheck alone covers
   mortgage + utilities, and a worst case where the other person is jobless and this person halts
   401(k)/HSA to free up every dollar.
@@ -53,6 +58,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | PA income tax | 3.07% (taxes 401k, not HSA) |
 | Local EIT | 1.0% most townships (editable) |
 | Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328% of price |
+| Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
 
 Property tax is the biggest local unknown: Chester County still assesses off a 1998 base, so the
 effective rate on a today's-price home is lower than headline millage suggests — but it varies by
