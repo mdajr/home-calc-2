@@ -46,7 +46,9 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   **(5)** a 15-yr loan with a further paid buydown, investing the smaller monthly gap then the full
   payment after payoff, and — using that same pot of cash as a **bigger down payment** instead of a
   buydown — **(6)** a 30-yr and **(7)** a 15-yr on the reduced loan. Scenarios 1 & 2 invest that
-  cash up front; 3–5 spend it on a buydown; 6 & 7 sink it into the down payment.
+  cash up front; 3–5 spend it on a buydown; 6 & 7 sink it into the down payment. The table also
+  shows each buydown's classic **break-even** (months/years for the lower payment to recoup the
+  upfront cost).
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
   closing + points must leave that emergency fund intact.
