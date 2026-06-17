@@ -37,15 +37,16 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   401(k)/HSA to free up every dollar.
 - **Points buy-down analysis.** Cost, monthly savings, and break-even for 0–3 discount points.
 - **30-year wealth: mortgage vs. investing.** Projects how much you'd accumulate in an S&P 500
-  index fund (default 10%/yr, compounded monthly) under five strategies that all share an
+  index fund (default 10%/yr, compounded monthly) under seven strategies that all share an
   *identical* cash outlay — the 15-yr P&I each month for 30 years plus the buydown's worth up
   front — so the (fully-owned, equal) home cancels out and only the portfolio differs: **(1)** a
   30-yr loan investing the 15-vs-30 monthly gap, **(2)** a 15-yr loan then investing the freed-up
   payment in years 15–30, **(3)** buying the 30-yr rate down to the 15-yr rate and investing the
-  larger monthly gap, **(4)** buying it down then paying it off in 15 years before investing, and
+  larger monthly gap, **(4)** buying it down then paying it off in 15 years before investing,
   **(5)** a 15-yr loan with a further paid buydown, investing the smaller monthly gap then the full
-  payment after payoff. Scenarios 1 & 2 invest, up front, the cash that scenarios 3–5 spend on the
-  buydown.
+  payment after payoff, and — using that same pot of cash as a **bigger down payment** instead of a
+  buydown — **(6)** a 30-yr and **(7)** a 15-yr on the reduced loan. Scenarios 1 & 2 invest that
+  cash up front; 3–5 spend it on a buydown; 6 & 7 sink it into the down payment.
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
   closing + points must leave that emergency fund intact.
