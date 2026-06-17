@@ -255,6 +255,17 @@
     </div>
 
     <div class="panel">
+      <h2>30-year wealth: mortgage vs. investing</h2>
+      <div class="field" style="max-width:280px">
+        <label>S&amp;P 500 assumed return %/yr <b id="invReturnV"></b></label>
+        <input type="number" id="invReturn" value="10" step="0.5">
+        <input type="range" id="invReturnR" min="0" max="15" step="0.5" value="10">
+        <div class="hint">Long-run historical S&amp;P 500 nominal average ≈10%/yr. Compounded monthly.</div>
+      </div>
+      <div id="wealthAnalysis"></div>
+    </div>
+
+    <div class="panel">
       <h2>Assumptions &amp; sources</h2>
       <div id="assump" class="hint" style="line-height:1.6"></div>
     </div>
@@ -290,7 +301,8 @@ function I(){
     term:+$('term').value, term15disc:+$('term15disc').value, pmi:+$('pmi').value, close:+$('close').value,
     ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
     expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
-    cushion:+$('cushion').value
+    cushion:+$('cushion').value,
+    invReturn:+$('invReturn').value
   };
 }
 
@@ -447,6 +459,7 @@ function render(){
   $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
   ['exFood','exCare','exCar','exMisc','exOther'].forEach(id=>{const e=$(id+'V'); if(e) e.textContent=fmt(+$(id).value);});
   $('cushionV').textContent=fmt(p.cushion); $('expensesTotalV').textContent=fmt(p.expenses);
+  $('invReturnV').textContent=p.invReturn+'%';
   // keep number<->range pairs in sync done via listeners
 
   const th=takeHome(p);
@@ -596,12 +609,16 @@ function render(){
   // ----- points analysis (on the explore loan) -----
   renderPoints(p,th,expPrice,expDown);
 
+  // ----- 30-year wealth projection (on the explored home) -----
+  renderWealth(p,expPrice,expDown);
+
   // ----- assumptions -----
   $('assump').innerHTML=`
     <b>Tax year 2026, MFJ.</b> Std deduction $${STD_DED.toLocaleString()}; SS wage base $${SS_WAGE_BASE.toLocaleString()}/person; 401(k) $${MAX_401K.toLocaleString()}/person; HSA family $${HSA_FAMILY.toLocaleString()}.
     PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
     Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%.
-    Mortgage term defaults to 30 yr; a 15-yr loan is modeled at your base rate minus the 15-yr discount (default ${p.term15disc}%, since 15-yr loans typically price ~0.5–0.75% below 30-yr). Lifetime-interest figures are P&amp;I only and assume the loan is held to term.<br>
+    Mortgage term defaults to 30 yr; a 15-yr loan is modeled at your base rate minus the 15-yr discount (default ${p.term15disc}%, since 15-yr loans typically price ~0.5–0.75% below 30-yr). Lifetime-interest figures are P&amp;I only and assume the loan is held to term.
+    The <b>30-year wealth</b> section projects an S&amp;P 500 index at ${p.invReturn}%/yr (compounded monthly), with no investment taxes or sequence-of-returns risk; all four strategies share an identical cash outlay, so the home (paid off and equal in every case at year 30) cancels and only the portfolio differs.<br>
     Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
     <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k)/limits</a> ·
@@ -676,6 +693,73 @@ function renderPoints(p,th,price,downFrac){
     <div class="note">With ${fmt(cashFree)} of cash above your emergency fund, points compete with your down payment. Buying points helps most if you'll <b>keep the loan past the break-even</b> (often 4–7 yrs) and your budget is monthly-constrained. If you're cash-constrained, that money usually does more as down payment (shrinks the loan <i>and</i> can kill PMI).</div>`;
 }
 
+// ---------- 30-year wealth projection: mortgage strategy vs. investing ----------
+// All four scenarios have an IDENTICAL cash outlay — the 15-yr P&I each month for
+// 360 months, plus the buydown's worth of cash up front — so the only thing that
+// differs is what happens to that money. At year 30 the home is paid off and worth
+// the same in every case, so it cancels out: we compare the investment portfolio.
+function projectWealth(p,price,downFrac){
+  const loan=price*(1-downFrac);
+  const N=360;                                   // 30 years of months
+  const m=Math.pow(1+(p.invReturn||0)/100,1/12)-1; // monthly return (annual compounded monthly)
+  // effective rates, consistent with scenario(): include any purchased points
+  const r30=Math.max(0.5, p.rate - p.points*p.buydown);
+  const r15=Math.max(0.5, p.rate - p.points*p.buydown - (p.term15disc||0));
+  const P30=pmt(loan,r30,30);     // 30-yr payment at the 30-yr rate
+  const P15=pmt(loan,r15,15);     // 15-yr payment at the (discounted) 15-yr rate
+  const P30bd=pmt(loan,r15,30);   // 30-yr payment after buying the rate down to r15
+  // cash to buy r30 down to r15: points needed × 1% of loan each
+  const ptsNeeded=p.buydown>0 ? (p.term15disc||0)/p.buydown : 0;
+  const B=ptsNeeded/100*loan;
+  // grow a portfolio: optional upfront lump, then a monthly contribution (end of month)
+  const grow=(lump,contribFn)=>{ let bal=lump; for(let t=1;t<=N;t++) bal=bal*(1+m)+contribFn(t); return bal; };
+  const totalContrib=(lump,contribFn)=>{ let c=lump; for(let t=1;t<=N;t++) c+=contribFn(t); return c; };
+  // monthly contribution schedules
+  const cf1=t=>P15-P30;                 // 30-yr loan, invest the 15-vs-30 gap every month
+  const cf2=t=>t>180?P15:0;             // 15-yr loan, then invest the freed-up payment yrs 15–30
+  const cf3=t=>P15-P30bd;               // bought-down 30-yr, invest the (bigger) gap every month
+  const cf4=t=>t>180?P15:0;             // bought-down 30-yr paid off in 15 yrs, then invest yrs 15–30
+  const rows=[
+    {n:'1. 30-yr + invest the difference',
+     desc:`Keep the 30-yr loan (${r30.toFixed(2)}%), pay ${fmt(P30)}/mo, invest the ${fmt(P15-P30)}/mo you'd have spent on a 15-yr. Buydown cash (${fmt(B)}) invested up front.`,
+     lump:B, cf:cf1, rate:r30, interest:P30*360-loan, buydown:0},
+    {n:'2. 15-yr, then invest the payment',
+     desc:`Take the 15-yr loan (${r15.toFixed(2)}%) at ${fmt(P15)}/mo; once it's paid off, invest that ${fmt(P15)}/mo for years 15–30. Buydown cash (${fmt(B)}) invested up front.`,
+     lump:B, cf:cf2, rate:r15, interest:P15*180-loan, buydown:0},
+    {n:'3. Buy down 30-yr + invest the difference',
+     desc:`Spend ${fmt(B)} to buy the 30-yr down to ${r15.toFixed(2)}% (pay ${fmt(P30bd)}/mo), invest the ${fmt(P15-P30bd)}/mo difference every month.`,
+     lump:0, cf:cf3, rate:r15, interest:P30bd*360-loan, buydown:B},
+    {n:'4. Buy down 30-yr, pay off in 15, then invest',
+     desc:`Spend ${fmt(B)} to buy the 30-yr down to ${r15.toFixed(2)}%, then pay ${fmt(P15)}/mo to retire it in 15 yrs; invest that ${fmt(P15)}/mo for years 15–30.`,
+     lump:0, cf:cf4, rate:r15, interest:P15*180-loan, buydown:B},
+  ];
+  rows.forEach(r=>{ r.portfolio=grow(r.lump,r.cf); r.invested=totalContrib(r.lump,r.cf); });
+  return {rows,loan,B,P15,P30,P30bd,r30,r15,ptsNeeded};
+}
+
+function renderWealth(p,price,downFrac){
+  if(price*(1-downFrac)<=0){ $('wealthAnalysis').innerHTML='<div class="hint">Set a price and a down payment below 100% to project.</div>'; return; }
+  const w=projectWealth(p,price,downFrac);
+  const best=w.rows.reduce((a,b)=>b.portfolio>a.portfolio?b:a);
+  const worst=w.rows.reduce((a,b)=>b.portfolio<a.portfolio?b:a);
+  const tr=w.rows.map(r=>`<tr ${r===best?'class="total"':''}>
+    <td title="${r.desc.replace(/"/g,'&quot;')}">${r.n}${r===best?' <span class="pill good">most</span>':''}</td>
+    <td>${r.rate.toFixed(2)}%</td>
+    <td>${r.lump>0?fmt(r.lump):'—'}</td>
+    <td>${fmt(r.interest)}</td>
+    <td><b>${fmt(r.portfolio)}</b></td>
+  </tr>`).join('');
+  const spread=best.portfolio-worst.portfolio;
+  $('wealthAnalysis').innerHTML=`
+    <div class="hint" style="margin-bottom:8px">On the explored ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(w.loan)}). 30-yr rate <b>${w.r30.toFixed(2)}%</b>; 15-yr / bought-down rate <b>${w.r15.toFixed(2)}%</b> (buydown ≈ ${w.ptsNeeded.toFixed(2)} pts = <b>${fmt(w.B)}</b>). All four spend the <b>same cash</b>: the 15-yr payment (${fmt(w.P15)}/mo) for 30 years, plus the buydown's worth up front — so the home is owned free-and-clear at year 30 in every case and only the investment account differs.</div>
+    <table>
+      <thead><tr><th>Scenario</th><th>Loan rate</th><th>Invested up front</th><th>Interest to bank</th><th>Portfolio @ 30 yr</th></tr></thead>
+      <tbody>${tr}</tbody>
+    </table>
+    <div class="flags">${w.rows.map(r=>`<div class="flag" style="align-items:flex-start"><span>${r.n.split('.')[0]}.</span><span class="hint">${r.desc}</span></div>`).join('')}</div>
+    <div class="note"><b>${best.n.replace(/^\d+\.\s*/,'')}</b> ends with the most: <b>${fmt(best.portfolio)}</b>, about <b>${fmt(spread)}</b> ahead of the lowest. Because every option costs the same out of pocket, the gap is pure opportunity cost — investing early and keeping more cash in the market (rather than sinking it into a faster payoff or a rate buydown) usually wins when the S&amp;P return (${p.invReturn}%) beats the mortgage rate. Drop the return toward the mortgage rate to see the strategies converge. <i>Assumes steady ${p.invReturn}%/yr returns with no taxes or sequence-of-returns risk — real markets are bumpy; this is a long-run illustration, not a guarantee.</i></div>`;
+}
+
 // ---------- load a strategy row into the explorer (so monthly numbers match) ----------
 window.loadStrat=function(price,dpPct){
   const ep=$('expPrice');
@@ -693,7 +777,7 @@ function pair(numId,rangeId){
   n.addEventListener('input',()=>{r.value=n.value;render();});
   r.addEventListener('input',()=>{n.value=r.value;render();});
 }
-['incomeA','incomeB','cash','rate','ptax'].forEach(id=>pair(id,id+'R'));
+['incomeA','incomeB','cash','rate','ptax','invReturn'].forEach(id=>pair(id,id+'R'));
 
 // ---------- persistence (localStorage) + shareable links ----------
 const LS_KEY='homecalc_v1';
