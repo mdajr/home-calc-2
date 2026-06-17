@@ -713,6 +713,10 @@ function projectWealth(p,price,downFrac){
   // cash to buy r30 down to r15: points needed × 1% of loan each
   const ptsNeeded=p.buydown>0 ? (p.term15disc||0)/p.buydown : 0;
   const B=ptsNeeded/100*loan;
+  // alternative use of B: add it to the down payment, shrinking the loan instead
+  const loanDp=Math.max(0,loan-B);
+  const P30dp=pmt(loanDp,r30,30);  // 30-yr payment on the reduced loan (no buydown)
+  const P15dp=pmt(loanDp,r15,15);  // 15-yr payment on the reduced loan (no buydown)
   // grow a portfolio: optional upfront lump, then a monthly contribution (end of month)
   const grow=(lump,contribFn)=>{ let bal=lump; for(let t=1;t<=N;t++) bal=bal*(1+m)+contribFn(t); return bal; };
   const totalContrib=(lump,contribFn)=>{ let c=lump; for(let t=1;t<=N;t++) c+=contribFn(t); return c; };
@@ -722,6 +726,8 @@ function projectWealth(p,price,downFrac){
   const cf3=t=>P15-P30bd;               // bought-down 30-yr, invest the (bigger) gap every month
   const cf4=t=>t>180?P15:0;             // bought-down 30-yr paid off in 15 yrs, then invest yrs 15–30
   const cf5=t=>t>180?P15:(P15-P15bd);   // 15-yr bought down further: invest the gap yrs 1–15, then P15
+  const cf6=t=>P15-P30dp;               // 30-yr on reduced loan, invest the gap every month
+  const cf7=t=>t>180?P15:(P15-P15dp);   // 15-yr on reduced loan: invest the gap yrs 1–15, then P15
   const rows=[
     {n:'1. 30-yr + invest the difference',
      desc:`Keep the 30-yr loan (${r30.toFixed(2)}%), pay ${fmt(P30)}/mo, invest the ${fmt(P15-P30)}/mo you'd have spent on a 15-yr. Buydown cash (${fmt(B)}) invested up front.`,
@@ -738,6 +744,12 @@ function projectWealth(p,price,downFrac){
     {n:'5. 15-yr + buy down a further 0.75%',
      desc:`Take the 15-yr loan and spend ${fmt(B)} to buy it down a further ${(p.term15disc||0)}% to ${r15bd.toFixed(2)}% (pay ${fmt(P15bd)}/mo). Invest the ${fmt(P15-P15bd)}/mo difference for years 1–15, then the full ${fmt(P15)}/mo once it's paid off for years 15–30.`,
      lump:0, cf:cf5, rate:r15bd, interest:P15bd*180-loan, buydown:B},
+    {n:'6. 30-yr, the buydown cash as down payment instead',
+     desc:`Same ${fmt(B)} — but instead of buying the rate down, add it to the down payment, cutting the loan to ${fmt(loanDp)} at the full ${r30.toFixed(2)}% (pay ${fmt(P30dp)}/mo). Invest the ${fmt(P15-P30dp)}/mo difference every month.`,
+     lump:0, cf:cf6, rate:r30, interest:P30dp*360-loanDp, buydown:0},
+    {n:'7. 15-yr, the buydown cash as down payment instead',
+     desc:`Same ${fmt(B)} added to the down payment, cutting the loan to ${fmt(loanDp)} at the 15-yr ${r15.toFixed(2)}% (pay ${fmt(P15dp)}/mo). Invest the ${fmt(P15-P15dp)}/mo difference for years 1–15, then the full ${fmt(P15)}/mo for years 15–30.`,
+     lump:0, cf:cf7, rate:r15, interest:P15dp*180-loanDp, buydown:0},
   ];
   rows.forEach(r=>{ r.portfolio=grow(r.lump,r.cf); r.invested=totalContrib(r.lump,r.cf); });
   return {rows,loan,B,P15,P30,P30bd,r30,r15,ptsNeeded};
@@ -763,7 +775,7 @@ function renderWealth(p,price,downFrac){
       <tbody>${tr}</tbody>
     </table>
     <div class="flags">${w.rows.map(r=>`<div class="flag" style="align-items:flex-start"><span>${r.n.split('.')[0]}.</span><span class="hint">${r.desc}</span></div>`).join('')}</div>
-    <div class="note"><b>${best.n.replace(/^\d+\.\s*/,'')}</b> ends with the most: <b>${fmt(best.portfolio)}</b>, about <b>${fmt(spread)}</b> ahead of the lowest. Because every option costs the same out of pocket, the gap is pure opportunity cost — investing early and keeping more cash in the market (rather than sinking it into a faster payoff or a rate buydown) usually wins when the S&amp;P return (${p.invReturn}%) beats the mortgage rate. Drop the return toward the mortgage rate to see the strategies converge. <i>Assumes steady ${p.invReturn}%/yr returns with no taxes or sequence-of-returns risk — real markets are bumpy; this is a long-run illustration, not a guarantee.</i></div>`;
+    <div class="note"><b>${best.n.replace(/^\d+\.\s*/,'')}</b> ends with the most: <b>${fmt(best.portfolio)}</b>, about <b>${fmt(spread)}</b> ahead of the lowest. Because every option costs the same out of pocket, the gap is pure opportunity cost — investing early and keeping more cash in the market (rather than sinking it into a faster payoff, a rate buydown, or a bigger down payment) usually wins when the S&amp;P return (${p.invReturn}%) beats the mortgage rate. Drop the return toward the mortgage rate to see the strategies converge. <i>Assumes steady ${p.invReturn}%/yr returns with no taxes or sequence-of-returns risk — real markets are bumpy; this is a long-run illustration, not a guarantee.</i></div>`;
 }
 
 // ---------- load a strategy row into the explorer (so monthly numbers match) ----------
