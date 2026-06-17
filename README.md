@@ -36,6 +36,14 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   mortgage + utilities, and a worst case where the other person is jobless and this person halts
   401(k)/HSA to free up every dollar.
 - **Points buy-down analysis.** Cost, monthly savings, and break-even for 0–3 discount points.
+- **30-year wealth: mortgage vs. investing.** Projects how much you'd accumulate in an S&P 500
+  index fund (default 10%/yr, compounded monthly) under four strategies that all share an
+  *identical* cash outlay — the 15-yr P&I each month for 30 years plus the buydown's worth up
+  front — so the (fully-owned, equal) home cancels out and only the portfolio differs: **(1)** a
+  30-yr loan investing the 15-vs-30 monthly gap, **(2)** a 15-yr loan then investing the freed-up
+  payment in years 15–30, **(3)** buying the 30-yr rate down to the 15-yr rate and investing the
+  larger monthly gap, and **(4)** buying it down then paying it off in 15 years before investing.
+  Scenarios 1 & 2 also invest, up front, the cash that scenarios 3 & 4 spend on the buydown.
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
   closing + points must leave that emergency fund intact.
@@ -59,6 +67,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | Local EIT | 1.0% most townships (editable) |
 | Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328% of price |
 | Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
+| S&P 500 return | 10%/yr nominal, compounded monthly (editable); no investment taxes |
 
 Property tax is the biggest local unknown: Chester County still assesses off a 1998 base, so the
 effective rate on a today's-price home is lower than headline millage suggests — but it varies by
