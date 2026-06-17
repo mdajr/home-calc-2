@@ -732,31 +732,44 @@ function projectWealth(p,price,downFrac){
   const rows=[
     {n:'1. 30-yr + invest the difference',
      desc:`Keep the 30-yr loan (${r30.toFixed(2)}%), pay ${fmt(P30)}/mo, invest the ${fmt(P15-P30)}/mo you'd have spent on a 15-yr. Buydown cash (${fmt(B)}) invested up front.`,
-     lump:B, cf:cf1, rate:r30, interest:P30*360-loan, buydown:0},
+     lump:B, cf:cf1, rate:r30, interest:P30*360-loan, buydown:0, loanStart:loan},
     {n:'2. 15-yr, then invest the payment',
      desc:`Take the 15-yr loan (${r15.toFixed(2)}%) at ${fmt(P15)}/mo; once it's paid off, invest that ${fmt(P15)}/mo for years 15–30. Buydown cash (${fmt(B)}) invested up front.`,
-     lump:B, cf:cf2, rate:r15, interest:P15*180-loan, buydown:0},
+     lump:B, cf:cf2, rate:r15, interest:P15*180-loan, buydown:0, loanStart:loan},
     {n:'3. Buy down 30-yr + invest the difference',
      desc:`Spend ${fmt(B)} to buy the 30-yr down to ${r15.toFixed(2)}% (pay ${fmt(P30bd)}/mo), invest the ${fmt(P15-P30bd)}/mo difference every month.`,
-     lump:0, cf:cf3, rate:r15, interest:P30bd*360-loan, buydown:B, save:P30-P30bd},
+     lump:0, cf:cf3, rate:r15, interest:P30bd*360-loan, buydown:B, loanStart:loan, vs:0},
     {n:'4. Buy down 30-yr, pay off in 15, then invest',
      desc:`Spend ${fmt(B)} to buy the 30-yr down to ${r15.toFixed(2)}%, then pay ${fmt(P15)}/mo to retire it in 15 yrs; invest that ${fmt(P15)}/mo for years 15–30.`,
-     lump:0, cf:cf4, rate:r15, interest:P15*180-loan, buydown:B, save:P30_15-P15},
+     lump:0, cf:cf4, rate:r15, interest:P15*180-loan, buydown:B, loanStart:loan, vs:1},
     {n:'5. 15-yr + buy down a further 0.75%',
      desc:`Take the 15-yr loan and spend ${fmt(B)} to buy it down a further ${(p.term15disc||0)}% to ${r15bd.toFixed(2)}% (pay ${fmt(P15bd)}/mo). Invest the ${fmt(P15-P15bd)}/mo difference for years 1–15, then the full ${fmt(P15)}/mo once it's paid off for years 15–30.`,
-     lump:0, cf:cf5, rate:r15bd, interest:P15bd*180-loan, buydown:B, save:P15-P15bd},
+     lump:0, cf:cf5, rate:r15bd, interest:P15bd*180-loan, buydown:B, loanStart:loan, vs:1},
     {n:'6. 30-yr, the buydown cash as down payment instead',
      desc:`Same ${fmt(B)} — but instead of buying the rate down, add it to the down payment, cutting the loan to ${fmt(loanDp)} at the full ${r30.toFixed(2)}% (pay ${fmt(P30dp)}/mo). Invest the ${fmt(P15-P30dp)}/mo difference every month.`,
-     lump:0, cf:cf6, rate:r30, interest:P30dp*360-loanDp, buydown:0},
+     lump:0, cf:cf6, rate:r30, interest:P30dp*360-loanDp, buydown:0, loanStart:loanDp},
     {n:'7. 15-yr, the buydown cash as down payment instead',
      desc:`Same ${fmt(B)} added to the down payment, cutting the loan to ${fmt(loanDp)} at the 15-yr ${r15.toFixed(2)}% (pay ${fmt(P15dp)}/mo). Invest the ${fmt(P15-P15dp)}/mo difference for years 1–15, then the full ${fmt(P15)}/mo for years 15–30.`,
-     lump:0, cf:cf7, rate:r15, interest:P15dp*180-loanDp, buydown:0},
+     lump:0, cf:cf7, rate:r15, interest:P15dp*180-loanDp, buydown:0, loanStart:loanDp},
   ];
-  rows.forEach(r=>{
-    r.portfolio=grow(r.lump,r.cf); r.invested=totalContrib(r.lump,r.cf);
-    // classic break-even: months for the buydown's lower payment to recoup its upfront cost
-    r.beMonths=(r.buydown>0 && r.save>0) ? r.buydown/r.save : null;
-  });
+  // Net-worth path for each strategy: investment portfolio minus remaining mortgage
+  // balance (the home value is identical everywhere, so it cancels). This is what you'd
+  // walk away with if you sold and paid off the loan at that month.
+  const nwPath=r=>{
+    let port=r.lump, bal=r.loanStart, rmo=r.rate/1200, path=[port-bal];
+    for(let t=1;t<=N;t++){
+      const pay=P15-r.cf(t);                 // every strategy spends P15/mo on housing+investing
+      if(bal>1e-6){ const intr=bal*rmo; bal=Math.max(0,bal-(pay-intr)); }
+      port=port*(1+m)+r.cf(t);
+      path.push(port-bal);
+    }
+    return path;
+  };
+  const crossMonth=(a,b)=>{ for(let t=1;t<=N;t++) if(a[t]>=b[t]) return t; return null; };
+  rows.forEach(r=>{ r.portfolio=grow(r.lump,r.cf); r.invested=totalContrib(r.lump,r.cf); r.nw=nwPath(r); });
+  // TRUE economic break-even for a buydown: the month its net worth overtakes the SAME cash
+  // invested instead (its `vs` sibling) — counting reinvested savings AND opportunity cost.
+  rows.forEach(r=>{ r.beMonths = (r.vs!=null) ? crossMonth(r.nw, rows[r.vs].nw) : null; r.beVs = (r.vs!=null)?rows[r.vs]:null; });
   return {rows,loan,B,P15,P30,P30bd,r30,r15,ptsNeeded};
 }
 
@@ -765,12 +778,16 @@ function renderWealth(p,price,downFrac){
   const w=projectWealth(p,price,downFrac);
   const best=w.rows.reduce((a,b)=>b.portfolio>a.portfolio?b:a);
   const worst=w.rows.reduce((a,b)=>b.portfolio<a.portfolio?b:a);
-  const beTxt=r=>r.beMonths==null?'—':Math.round(r.beMonths)+' mo ('+(r.beMonths/12).toFixed(1)+' yr)';
+  const beTxt=r=>{
+    if(r.vs==null) return '—';
+    if(r.beMonths==null) return '<span style="color:var(--bad)">never</span>';
+    return Math.round(r.beMonths)+' mo ('+(r.beMonths/12).toFixed(1)+' yr)';
+  };
   const tr=w.rows.map(r=>`<tr ${r===best?'class="total"':''}>
     <td title="${r.desc.replace(/"/g,'&quot;')}">${r.n}${r===best?' <span class="pill good">most</span>':''}</td>
     <td>${r.rate.toFixed(2)}%</td>
     <td>${r.lump>0?fmt(r.lump):'—'}</td>
-    <td>${beTxt(r)}</td>
+    <td title="${r.vs!=null?('vs. '+r.beVs.n).replace(/"/g,'&quot;'):''}">${beTxt(r)}</td>
     <td>${fmt(r.interest)}</td>
     <td><b>${fmt(r.portfolio)}</b></td>
   </tr>`).join('');
@@ -778,11 +795,11 @@ function renderWealth(p,price,downFrac){
   $('wealthAnalysis').innerHTML=`
     <div class="hint" style="margin-bottom:8px">On the explored ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(w.loan)}). 30-yr rate <b>${w.r30.toFixed(2)}%</b>; 15-yr / bought-down rate <b>${w.r15.toFixed(2)}%</b> (buydown ≈ ${w.ptsNeeded.toFixed(2)} pts = <b>${fmt(w.B)}</b>). All seven spend the <b>same cash</b>: the 15-yr payment (${fmt(w.P15)}/mo) for 30 years, plus the buydown's worth up front — so the home is owned free-and-clear at year 30 in every case and only the investment account differs.</div>
     <table>
-      <thead><tr><th>Scenario</th><th>Loan rate</th><th>Invested up front</th><th>Buydown break-even</th><th>Interest to bank</th><th>Portfolio @ 30 yr</th></tr></thead>
+      <thead><tr><th>Scenario</th><th>Loan rate</th><th>Invested up front</th><th>Break-even vs. investing</th><th>Interest to bank</th><th>Portfolio @ 30 yr</th></tr></thead>
       <tbody>${tr}</tbody>
     </table>
     <div class="flags">${w.rows.map(r=>`<div class="flag" style="align-items:flex-start"><span>${r.n.split('.')[0]}.</span><span class="hint">${r.desc}</span></div>`).join('')}</div>
-    <div class="note"><b>${best.n.replace(/^\d+\.\s*/,'')}</b> ends with the most: <b>${fmt(best.portfolio)}</b>, about <b>${fmt(spread)}</b> ahead of the lowest. Because every option costs the same out of pocket, the gap is pure opportunity cost — investing early and keeping more cash in the market (rather than sinking it into a faster payoff, a rate buydown, or a bigger down payment) usually wins when the S&amp;P return (${p.invReturn}%) beats the mortgage rate. Drop the return toward the mortgage rate to see the strategies converge. <b>Buydown break-even</b> is the classic measure — buydown cost ÷ the monthly payment it saves — i.e. how long the lower payment takes to repay the points (here ~${(w.rows.find(r=>r.beMonths!=null)?(w.rows.find(r=>r.beMonths!=null).beMonths/12).toFixed(1):'—')} yr); sell or refinance before then and the buydown loses money. (It's a nominal break-even: it ignores that those savings are themselves reinvested, which shortens it, and the opportunity cost of the upfront cash, which lengthens it.) <i>Assumes steady ${p.invReturn}%/yr returns with no taxes or sequence-of-returns risk — real markets are bumpy; this is a long-run illustration, not a guarantee.</i></div>`;
+    <div class="note"><b>${best.n.replace(/^\d+\.\s*/,'')}</b> ends with the most: <b>${fmt(best.portfolio)}</b>, about <b>${fmt(spread)}</b> ahead of the lowest. Because every option costs the same out of pocket, the gap is pure opportunity cost — investing early and keeping more cash in the market (rather than sinking it into a faster payoff, a rate buydown, or a bigger down payment) usually wins when the S&amp;P return (${p.invReturn}%) beats the mortgage rate. Drop the return toward the mortgage rate to see the strategies converge. <b>Break-even vs. investing</b> is the <i>true</i> economic crossover: the month a buydown's <b>net worth</b> (portfolio − remaining mortgage) finally overtakes putting that same cash in the market instead (scenario 3 vs 1; scenarios 4 & 5 vs 2) — so it fully counts the reinvested payment savings <i>and</i> the opportunity cost of the upfront money. Sell or refinance before that month and the buydown was the wrong call; "never" means it's mathematically dominated (e.g. buying a 30-yr down just to pay it off in 15 never beats simply taking the 15-yr and investing the cash). <i>Assumes steady ${p.invReturn}%/yr returns with no taxes or sequence-of-returns risk — real markets are bumpy; this is a long-run illustration, not a guarantee.</i></div>`;
 }
 
 // ---------- load a strategy row into the explorer (so monthly numbers match) ----------
