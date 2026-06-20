@@ -27,6 +27,9 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   breakdown, monthly leftover, and flags for cash shortfalls / emergency-fund preservation / PMI.
   The down-payment slider goes **below 20%** (down to 5%) — PMI is added automatically — which is
   useful when you'd rather keep cash on hand for renovations than sink it into the down payment.
+  An optional **appraised value** field models an *appraisal gap*: if the home appraises below your
+  price, the lender only finances against the appraised value, so you cover the difference in cash at
+  closing (which shrinks the loan). Applies to the explored home only.
 - **30-yr vs 15-yr comparison.** A side-by-side block in the explorer shows the monthly P&I, total
   housing, monthly leftover, and lifetime interest for both terms on the same home. The 15-yr is
   priced at your base rate minus a configurable discount (default 0.75%, since 15-yr loans typically
@@ -79,6 +82,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | Closing costs | 3% of price default (lender/title/escrow/transfer; editable) |
 | Buyer's agent fee | 3% of price default (signed buyer's-agency commission; set to 0 if seller covers it) |
 | Lender LLPA | Fannie Mae loan-level price adjustment, 780+ tier, 30-yr purchase (eff. 2026-01-28): one-time % of loan by LTV — 0% (≥25% down), 0.375% (20%/15% down), 0.250% (10%/5% down); 15-yr not modeled |
+| Appraisal gap | Optional appraised value (explored home only); if below price, the shortfall is cash at closing and reduces the loan dollar-for-dollar |
 | Lease overlap | 3 mo notice × $3,900/mo rent + utilities, **net of income** — only the rent your monthly surplus can't absorb during the overlap draws down savings (editable) |
 | Utilities (auto) | $250 base + $0.16/sqft when left blank (≈ $700/mo at 2,800 sqft) |
 | S&P 500 return | 10%/yr nominal, compounded monthly (editable); no investment taxes |

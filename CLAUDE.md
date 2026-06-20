@@ -30,9 +30,11 @@ There is **no build step and no dependencies** — open `index.html` in a browse
   `soloNet(p,e,contribute)` models a single-income survivor case (optionally halting 401k/HSA).
 - **`scenario(p,price,downFrac)`** — monthly cost for a home. Splits **`core`** (HOUSING: P&I, tax,
   insurance, PMI, HOA) from **`homeLiving`** (utilities + maintenance, treated as living expenses that
-  scale with the home). PMI applies when LTV > 80%. **`cashToClose`** = down + closing + buyer's agent
-  fee + discount points + **LLPA** (`llpaPct(ltv,term)/100 × loan`, one-time) + **lease overlap**.
-  Lease overlap models the notice period on a month-to-month
+  scale with the home). PMI applies when LTV > 80%. **`cashToClose`** = down + **appraisal gap**
+  (`p.apprGap`, explored-home only — see below) + closing + buyer's agent fee + discount points +
+  **LLPA** (`llpaPct(ltv,term)/100 × loan`, one-time) + **lease overlap**. The appraisal gap shrinks the
+  loan dollar-for-dollar (`loan = price − down − apprGap`), since the lender finances against the lower
+  of price/appraisal. Lease overlap models the notice period on a month-to-month
   lease: during it you double-pay rent, but income keeps flowing, so only the rent the monthly surplus
   can't absorb hits savings — `leaseNotice × max(0, leaseRent − surplus)`, where `surplus = netMo −
   totalMonthly − expenses − debt`. `render()` sets `p.netMo` (from `takeHome`) before any `scenario()`
@@ -67,9 +69,13 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 - **Property tax has no presets.** It's entered directly as an effective % of price via a slider
   (1–2%) with manual entry allowed outside that range. Don't reintroduce a township→rate lookup table.
   An optional **`ptaxDollar`** field overrides the % with a flat annual $ (PA doesn't spot-reassess on
-  sale). It applies to the **explored home only** — `render()` builds a `pe` params copy with `ptax`
-  recomputed as `ptaxDollar/expPrice*100` and passes `pe` to `es`, `renderTermCompare`, `renderPoints`;
-  the solvers/strategy table keep the slider %.
+  sale).
+- **Explored-home-only overrides go through `pe`.** `render()` builds a `pe` params copy and passes it
+  to `es`, `renderTermCompare`, `renderPoints` (never the solvers/strategy table, which have no specific
+  listing). `pe` carries: (1) `ptax` recomputed as `ptaxDollar/expPrice*100` when the $ override is set;
+  (2) `apprGap = max(0, expPrice − appraised)` when an appraised value is entered. Base `p` leaves both
+  off so the strategy table keeps the slider % and no gap. When adding a new explored-only knob, set it
+  on `pe`, not base `p`.
 - **Conservative by design.** Take-home uses the standard deduction (no itemized mortgage-interest /
   SALT), so results lean low. Note this when touching the tax math.
 - **Keep it single-file and dependency-free.** Don't add a build step, framework, or external libs.
