@@ -76,7 +76,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
 | Closing costs | 3% of price default (lender/title/escrow/transfer; editable) |
 | Buyer's agent fee | 3% of price default (signed buyer's-agency commission; set to 0 if seller covers it) |
-| Lease overlap | 3 mo notice × $3,900/mo rent + utilities = cash still owed on the current lease after closing (editable) |
+| Lease overlap | 3 mo notice × $3,900/mo rent + utilities, **net of income** — only the rent your monthly surplus can't absorb during the overlap draws down savings (editable) |
 | Utilities (auto) | $250 base + $0.16/sqft when left blank (≈ $700/mo at 2,800 sqft) |
 | S&P 500 return | 10%/yr nominal, compounded monthly (editable); no investment taxes |
 
