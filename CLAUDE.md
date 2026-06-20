@@ -21,13 +21,15 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 - **Constants (2026 tax year)** — `STD_DED`, `SS_WAGE_BASE`, `MAX_401K`, `HSA_FAMILY`, `FED` brackets,
   etc. Update these when tax figures change for a new year.
 - **`I()`** — reads every input into one params object `p`. Utilities auto-estimate when the field is
-  blank (`150 + 0.10*sqft`).
+  blank (`250 + 0.16*sqft` ≈ $700/mo at 2,800 sqft).
 - **`takeHome(p)`** — 2026 MFJ take-home: federal brackets, FICA (SS cap + Medicare surtax), PA 3.07%,
   local EIT. Subtracts 401(k)×earners + HSA as non-spendable. Returns combined **and** per-person net.
   `soloNet(p,e,contribute)` models a single-income survivor case (optionally halting 401k/HSA).
 - **`scenario(p,price,downFrac)`** — monthly cost for a home. Splits **`core`** (HOUSING: P&I, tax,
   insurance, PMI, HOA) from **`homeLiving`** (utilities + maintenance, treated as living expenses that
-  scale with the home). PMI applies when LTV > 80%.
+  scale with the home). PMI applies when LTV > 80%. **`cashToClose`** = down + closing + buyer's agent
+  fee + discount points + **lease overlap** (`leaseNotice × leaseRent` — rent + utilities still owed
+  through a month-to-month lease's notice period after closing).
 - **`efFor(p,s)`** — emergency fund = N months of (housing payment + utilities) + fixed buffer.
 - **Solvers** — `maxForDownFrac` (binary search; jointly respects monthly budget and cash-after-EF),
   `maxAllCash` (iterates because down ↔ EF are mutually dependent), `optimize` (sweeps 20–100% down for
