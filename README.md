@@ -53,7 +53,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   never overtake is flagged "never").
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
-  closing + points must leave that emergency fund intact.
+  closing + buyer's agent fee + points must leave that emergency fund intact.
 - **Per-person income & take-home.** Enter each spouse's salary separately for accurate Social
   Security wage caps and the right number of 401(k)s; see each person's monthly take-home.
 - **Shareable links.** "Copy a share link" in the header packs every input — including the specific
@@ -74,6 +74,8 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | Local EIT | 1.0% most townships (editable) |
 | Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328% of price |
 | Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
+| Closing costs | 3% of price default (lender/title/escrow/transfer; editable) |
+| Buyer's agent fee | 3% of price default (signed buyer's-agency commission; set to 0 if seller covers it) |
 | S&P 500 return | 10%/yr nominal, compounded monthly (editable); no investment taxes |
 
 Property tax is the biggest local unknown: Chester County still assesses off a 1998 base, so the
