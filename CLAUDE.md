@@ -31,7 +31,10 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 - **`scenario(p,price,downFrac)`** — monthly cost for a home. Splits **`core`** (HOUSING: P&I, tax,
   insurance, PMI, HOA) from **`homeLiving`** (utilities + maintenance, treated as living expenses that
   scale with the home). PMI applies when LTV > 80%. **`cashToClose`** = down + **appraisal gap**
-  (`p.apprGap`, explored-home only — see below) + closing + buyer's agent fee + discount points +
+  (`p.apprGap`, explored-home only — see below) + closing (`p.close`: title + lender/settlement fees +
+  prepaid interest) + **transfer tax** (`p.xfer/100 × price`; PA realty transfer tax, buyer's customary
+  ~1% half of the 2% total) + **property-tax prepaids** (`p.taxProrate` months × monthly property tax;
+  lender escrow funding + seller reimbursement, timing-dependent) + buyer's agent fee + discount points +
   **LLPA** (`llpaPct(ltv,term)/100 × loan`, one-time) + **lease overlap**. The appraisal gap shrinks the
   loan dollar-for-dollar (`loan = price − down − apprGap`), since the lender finances against the lower
   of price/appraisal. Lease overlap models the notice period on a month-to-month

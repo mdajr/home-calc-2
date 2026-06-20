@@ -58,7 +58,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   options that shed PMI sooner get credit for it.
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
-  closing + buyer's agent fee + lender LLPA + lease overlap + points must leave that emergency fund intact.
+  closing + transfer tax + property-tax prepaids + buyer's agent fee + lender LLPA + lease overlap + points must leave that emergency fund intact.
 - **Per-person income & take-home.** Enter each spouse's salary separately for accurate Social
   Security wage caps and the right number of 401(k)s; see each person's monthly take-home.
 - **Shareable links.** "Copy a share link" in the header packs every input — including the specific
@@ -79,7 +79,9 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | Local EIT | 1.0% most townships (editable) |
 | Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328% of price |
 | Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
-| Closing costs | 3% of price default (lender/title/escrow/transfer; editable) |
+| Closing costs | 1.5% of price default (title insurance + lender/settlement fees + prepaid interest; editable) |
+| Transfer tax | 1.0% of price default — PA realty transfer tax (2% total, customarily split; buyer pays ~1%); set to 0 if the seller covers the buyer's half |
+| Property-tax prepaids | 6 months default — lender tax-escrow funding + reimbursing the seller for prepaid taxes; timing-dependent (a summer closing right after the school-tax bill can run 12+ months) |
 | Buyer's agent fee | 3% of price default (signed buyer's-agency commission; set to 0 if seller covers it) |
 | Lender LLPA | Fannie Mae loan-level price adjustment, 780+ tier, 30-yr purchase (eff. 2026-01-28): one-time % of loan by LTV — 0% (≥25% down), 0.375% (20%/15% down), 0.250% (10%/5% down); 15-yr not modeled |
 | Appraisal gap | Optional appraised value (explored home only); if below price, the shortfall is cash at closing and reduces the loan dollar-for-dollar |
