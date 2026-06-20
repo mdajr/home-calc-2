@@ -308,6 +308,19 @@ const fmt0=n=>'$'+Math.round(n).toLocaleString();
 const pct=n=>(n).toFixed(1)+'%';
 function fedTax(ti){let t=0;for(let i=0;i<FED.length;i++){const lo=FED[i][0],hi=i<FED.length-1?FED[i+1][0]:Infinity,r=FED[i][1];if(ti>lo)t+=(Math.min(ti,hi)-lo)*r;}return t;}
 function pmt(L,annual,years){if(L<=0)return 0;const r=annual/100/12,n=years*12;if(r===0)return L/n;return L*r/(1-Math.pow(1+r,-n));}
+// Fannie Mae LLPA matrix (one-time fee at closing, % of loan), 780+ credit tier, term >15 yr,
+// purchase money. Keyed by LTV (= 1 − down fraction). Effective 2026-01-28. Source: Fannie Mae
+// LLPA Matrix. 15-yr (term ≤15) LLPAs are materially lower and aren't in this table, so they're
+// modeled as 0; <20% down also carries PMI (handled separately in scenario()).
+function llpaPct(ltv,term){
+  if(term<=15) return 0;                 // 15-yr schedule is lower; not modeled
+  const l=ltv*100;
+  if(l<=75.00) return 0.000;             // ≥25% down
+  if(l<=80.00) return 0.375;             // 20% down
+  if(l<=85.00) return 0.375;             // 15% down
+  if(l<=90.00) return 0.250;             // 10% down
+  return 0.250;                          // 90.01–95% (5% down)
+}
 
 // ---------- read inputs ----------
 function I(){
@@ -392,6 +405,8 @@ function scenario(p,price,downFrac){
   const pointsCost=p.points/100*loan;
   const closing=p.close/100*price;
   const agentFee=p.agent/100*price;    // buyer's agency commission, paid at closing
+  const llpaRate=llpaPct(ltv,p.term);  // Fannie Mae loan-level price adjustment (780+ tier)
+  const llpaCost=llpaRate/100*loan;    // one-time, % of loan, due at closing
   const core=pi+pmi+tax+ins+hoa;       // HOUSING: mortgage payment only
   const homeLiving=maint+util;          // home-driven LIVING expenses (counted with food/etc.)
   const totalMonthly=core+homeLiving;   // all home-related monthly outflow
@@ -400,8 +415,8 @@ function scenario(p,price,downFrac){
   const surplus=Math.max(0,(p.netMo||0)-totalMonthly-p.expenses-p.debt); // income free for overlap rent
   const leaseDrainMo=Math.max(0,p.leaseRent-surplus); // savings drawn per overlap month
   const leaseCarryover=p.leaseNotice*leaseDrainMo;
-  const cashToClose=down+closing+pointsCost+agentFee+leaseCarryover;
-  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,agentFee,leaseCarryover,leaseDrainMo,surplus,cashToClose,core,homeLiving,totalMonthly};
+  const cashToClose=down+closing+pointsCost+agentFee+llpaCost+leaseCarryover;
+  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,agentFee,llpaRate,llpaCost,leaseCarryover,leaseDrainMo,surplus,cashToClose,core,homeLiving,totalMonthly};
 }
 
 // ---------- emergency fund: X months of housing+utilities + fixed buffer ----------
@@ -441,8 +456,9 @@ function maxAllCash(p,th){
       const closing=p.close/100*price;
       const agentFee=p.agent/100*price;
       const leaseCarryover=s.leaseCarryover; // income-netted overlap from scenario()
-      let nd=(avail-closing-agentFee-leaseCarryover-p.points/100*price)/(1-p.points/100);
-      if(nd<0) return null;          // can't cover closing+agent fee+lease overlap+points even at 0 down
+      const llpaCost=s.llpaCost;             // LLPA from scenario() at the current LTV
+      let nd=(avail-closing-agentFee-leaseCarryover-llpaCost-p.points/100*price)/(1-p.points/100);
+      if(nd<0) return null;          // can't cover closing+agent fee+LLPA+lease overlap+points even at 0 down
       if(nd>price) nd=price;         // all cash, no loan
       down=nd;
     }
@@ -638,6 +654,7 @@ function render(){
     <tr><td>Buyer's agent fee (${p.agent}%)</td><td>${fmt(es.agentFee)}</td></tr>
     <tr><td>Lease overlap from savings<br><span class="hint">${p.leaseNotice} mo × (${fmt(p.leaseRent)} rent − ${fmt(es.surplus)}/mo income surplus${es.leaseDrainMo<=0?' — fully covered by income':''})</span></td><td>${fmt(es.leaseCarryover)}</td></tr>
     <tr><td>Discount points (${p.points})</td><td>${fmt(es.pointsCost)}</td></tr>
+    <tr><td>Lender LLPA fee<br><span class="hint">${es.llpaRate.toFixed(3)}% of loan @ ${(es.ltv*100).toFixed(0)}% LTV (780+ tier${p.term<=15?', n/a on 15-yr':''})</span></td><td>${fmt(es.llpaCost)}</td></tr>
     <tr class="total"><td>Cash to close</td><td>${fmt(es.cashToClose)}</td></tr>
     <tr><td>Cash on hand</td><td>${fmt(p.cash)}</td></tr>
     <tr><td>Remaining after close</td><td style="color:${efAfter>=esEf?'var(--good)':'var(--bad)'}">${fmt(efAfter)}</td></tr>
@@ -659,7 +676,7 @@ function render(){
     PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
     Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%. PA doesn't spot-reassess on sale, so for a specific older listing you can paste its actual annual tax $ to override the %; that override applies to the explored home only (the max-affordable table keeps the % rate).
     Mortgage term defaults to 30 yr; a 15-yr loan is modeled at your base rate minus the 15-yr discount (default ${p.term15disc}%, since 15-yr loans typically price ~0.5–0.75% below 30-yr). Lifetime-interest figures are P&amp;I only and assume the loan is held to term.
-    <b>Cash to close</b> = down payment + closing costs (${p.close}% of price: lender/title/escrow/transfer) + buyer's agent fee (${p.agent}% of price) + lease overlap + any discount points. The buyer's agent fee reflects your signed buyer's-agency commission; set it to 0 if the seller covers it as a concession. <b>Lease overlap</b> models the ${p.leaseNotice}-month notice on your month-to-month lease (${fmt(p.leaseRent)}/mo rent + utilities): during those months you double-pay, but your paychecks keep coming, so only the portion your monthly income surplus can't absorb (${fmt(es.leaseDrainMo)}/mo here) draws down savings — the rest is funded by income, not your closing cash. Utilities auto-estimate at $250 base + $0.16/sqft when left blank.
+    <b>Cash to close</b> = down payment + closing costs (${p.close}% of price: lender/title/escrow/transfer) + buyer's agent fee (${p.agent}% of price) + lender LLPA + lease overlap + any discount points. The buyer's agent fee reflects your signed buyer's-agency commission; set it to 0 if the seller covers it as a concession. <b>LLPA</b> (Fannie Mae loan-level price adjustment, 780+ credit tier, 30-yr purchase, eff. 2026-01-28) is a one-time fee charged as a % of the loan based on LTV — 0% at ≤75% LTV (≥25% down), 0.375% at 75–80% (20% down), 0.375% at 80–85% (15%), 0.250% at 85–95% (10–5%); it can alternatively be priced into the rate. 15-yr loans use a lower schedule not modeled here (treated as 0). <b>Lease overlap</b> models the ${p.leaseNotice}-month notice on your month-to-month lease (${fmt(p.leaseRent)}/mo rent + utilities): during those months you double-pay, but your paychecks keep coming, so only the portion your monthly income surplus can't absorb (${fmt(es.leaseDrainMo)}/mo here) draws down savings — the rest is funded by income, not your closing cash. Utilities auto-estimate at $250 base + $0.16/sqft when left blank.
     The <b>30-year wealth</b> section projects an S&amp;P 500 index at ${p.invReturn}%/yr (compounded monthly), with no investment taxes or sequence-of-returns risk; the strategies share an identical cash outlay, so the home (paid off and equal in every case at year 30) cancels and only the portfolio differs. When the explored down payment is under 20%, each loan's PMI (until it crosses 80% LTV) is charged as an opportunity-cost drag, so options that shed PMI faster (15-yr, bigger down payment) are credited for it.<br>
     Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·

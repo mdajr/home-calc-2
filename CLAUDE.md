@@ -20,6 +20,9 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 
 - **Constants (2026 tax year)** — `STD_DED`, `SS_WAGE_BASE`, `MAX_401K`, `HSA_FAMILY`, `FED` brackets,
   etc. Update these when tax figures change for a new year.
+- **`llpaPct(ltv,term)`** — Fannie Mae loan-level price adjustment lookup (hardcoded **780+ credit
+  tier**, 30-yr purchase, eff. 2026-01-28). Returns a one-time fee as a % of loan by LTV bucket; 15-yr
+  (`term≤15`) returns 0 (lower schedule not modeled). Update the table when the matrix changes.
 - **`I()`** — reads every input into one params object `p`. Utilities auto-estimate when the field is
   blank (`250 + 0.16*sqft` ≈ $700/mo at 2,800 sqft).
 - **`takeHome(p)`** — 2026 MFJ take-home: federal brackets, FICA (SS cap + Medicare surtax), PA 3.07%,
@@ -28,7 +31,8 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 - **`scenario(p,price,downFrac)`** — monthly cost for a home. Splits **`core`** (HOUSING: P&I, tax,
   insurance, PMI, HOA) from **`homeLiving`** (utilities + maintenance, treated as living expenses that
   scale with the home). PMI applies when LTV > 80%. **`cashToClose`** = down + closing + buyer's agent
-  fee + discount points + **lease overlap**. Lease overlap models the notice period on a month-to-month
+  fee + discount points + **LLPA** (`llpaPct(ltv,term)/100 × loan`, one-time) + **lease overlap**.
+  Lease overlap models the notice period on a month-to-month
   lease: during it you double-pay rent, but income keeps flowing, so only the rent the monthly surplus
   can't absorb hits savings — `leaseNotice × max(0, leaseRent − surplus)`, where `surplus = netMo −
   totalMonthly − expenses − debt`. `render()` sets `p.netMo` (from `takeHome`) before any `scenario()`

@@ -55,7 +55,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   options that shed PMI sooner get credit for it.
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
-  closing + buyer's agent fee + lease overlap + points must leave that emergency fund intact.
+  closing + buyer's agent fee + lender LLPA + lease overlap + points must leave that emergency fund intact.
 - **Per-person income & take-home.** Enter each spouse's salary separately for accurate Social
   Security wage caps and the right number of 401(k)s; see each person's monthly take-home.
 - **Shareable links.** "Copy a share link" in the header packs every input — including the specific
@@ -78,6 +78,7 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
 | Closing costs | 3% of price default (lender/title/escrow/transfer; editable) |
 | Buyer's agent fee | 3% of price default (signed buyer's-agency commission; set to 0 if seller covers it) |
+| Lender LLPA | Fannie Mae loan-level price adjustment, 780+ tier, 30-yr purchase (eff. 2026-01-28): one-time % of loan by LTV — 0% (≥25% down), 0.375% (20%/15% down), 0.250% (10%/5% down); 15-yr not modeled |
 | Lease overlap | 3 mo notice × $3,900/mo rent + utilities, **net of income** — only the rent your monthly surplus can't absorb during the overlap draws down savings (editable) |
 | Utilities (auto) | $250 base + $0.16/sqft when left blank (≈ $700/mo at 2,800 sqft) |
 | S&P 500 return | 10%/yr nominal, compounded monthly (editable); no investment taxes |
