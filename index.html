@@ -156,6 +156,13 @@
           <input type="number" id="close" value="3.0" step="0.25">
         </div>
       </div>
+      <div class="row2">
+        <div class="field">
+          <label>Buyer's agent fee % of price <b id="agentV"></b></label>
+          <input type="number" id="agent" value="3.0" step="0.25">
+          <div class="hint">Your buyer's agency commission, paid at closing. Set to 0 if the seller agrees to cover it as a concession.</div>
+        </div>
+      </div>
     </div>
 
     <div class="panel">
@@ -298,7 +305,7 @@ function I(){
     cash:+$('cash').value, efMonths:+$('efMonths').value, efFixed:+$('efFixed').value, debt:+$('debt').value,
     eit:+$('eit').value, ptax:+$('ptax').value,
     rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
-    term:+$('term').value, term15disc:+$('term15disc').value, pmi:+$('pmi').value, close:+$('close').value,
+    term:+$('term').value, term15disc:+$('term15disc').value, pmi:+$('pmi').value, close:+$('close').value, agent:+$('agent').value,
     ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
     expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
     cushion:+$('cushion').value,
@@ -367,11 +374,12 @@ function scenario(p,price,downFrac){
   const util=p.util, hoa=p.hoa;
   const pointsCost=p.points/100*loan;
   const closing=p.close/100*price;
-  const cashToClose=down+closing+pointsCost;
+  const agentFee=p.agent/100*price;    // buyer's agency commission, paid at closing
+  const cashToClose=down+closing+pointsCost+agentFee;
   const core=pi+pmi+tax+ins+hoa;       // HOUSING: mortgage payment only
   const homeLiving=maint+util;          // home-driven LIVING expenses (counted with food/etc.)
   const totalMonthly=core+homeLiving;   // all home-related monthly outflow
-  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,cashToClose,core,homeLiving,totalMonthly};
+  return {down,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,agentFee,cashToClose,core,homeLiving,totalMonthly};
 }
 
 // ---------- emergency fund: X months of housing+utilities + fixed buffer ----------
@@ -409,8 +417,9 @@ function maxAllCash(p,th){
       const s=scenario(p,price,price>0?down/price:0);
       const avail=p.cash-efFor(p,s);
       const closing=p.close/100*price;
-      let nd=(avail-closing-p.points/100*price)/(1-p.points/100);
-      if(nd<0) return null;          // can't cover closing+points even at 0 down
+      const agentFee=p.agent/100*price;
+      let nd=(avail-closing-agentFee-p.points/100*price)/(1-p.points/100);
+      if(nd<0) return null;          // can't cover closing+agent fee+points even at 0 down
       if(nd>price) nd=price;         // all cash, no loan
       down=nd;
     }
@@ -454,7 +463,7 @@ function render(){
   $('eitV').textContent=p.eit+'%'; $('ptaxV').textContent=p.ptax+'%';
   $('rateV').textContent=p.rate+'%'; $('pointsV').textContent=p.points+' pts';
   $('buydownV').textContent=p.buydown+'%'; $('term15discV').textContent='−'+p.term15disc+'%';
-  $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%';
+  $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%'; $('agentV').textContent=p.agent+'%';
   $('insV').textContent=p.ins+'%'; $('maintV').textContent=p.maint+'%'; $('hoaV').textContent=fmt(p.hoa)+'/mo';
   $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
   ['exFood','exCare','exCar','exMisc','exOther'].forEach(id=>{const e=$(id+'V'); if(e) e.textContent=fmt(+$(id).value);});
@@ -596,6 +605,7 @@ function render(){
   $('expCash').innerHTML=`<table>
     <tr><td>Down payment (${(expDown*100).toFixed(0)}%)</td><td>${fmt(es.down)}</td></tr>
     <tr><td>Closing costs (${p.close}%)</td><td>${fmt(es.closing)}</td></tr>
+    <tr><td>Buyer's agent fee (${p.agent}%)</td><td>${fmt(es.agentFee)}</td></tr>
     <tr><td>Discount points (${p.points})</td><td>${fmt(es.pointsCost)}</td></tr>
     <tr class="total"><td>Cash to close</td><td>${fmt(es.cashToClose)}</td></tr>
     <tr><td>Cash on hand</td><td>${fmt(p.cash)}</td></tr>
@@ -618,6 +628,7 @@ function render(){
     PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
     Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%.
     Mortgage term defaults to 30 yr; a 15-yr loan is modeled at your base rate minus the 15-yr discount (default ${p.term15disc}%, since 15-yr loans typically price ~0.5–0.75% below 30-yr). Lifetime-interest figures are P&amp;I only and assume the loan is held to term.
+    <b>Cash to close</b> = down payment + closing costs (${p.close}% of price: lender/title/escrow/transfer) + buyer's agent fee (${p.agent}% of price) + any discount points. The buyer's agent fee reflects your signed buyer's-agency commission; set it to 0 if the seller covers it as a concession.
     The <b>30-year wealth</b> section projects an S&amp;P 500 index at ${p.invReturn}%/yr (compounded monthly), with no investment taxes or sequence-of-returns risk; all four strategies share an identical cash outlay, so the home (paid off and equal in every case at year 30) cancels and only the portfolio differs.<br>
     Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
