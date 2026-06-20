@@ -50,7 +50,9 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   shows each buydown's **true economic break-even** — the month its *net worth* (portfolio minus
   remaining mortgage balance) overtakes investing that same cash instead, fully accounting for the
   reinvested payment savings *and* the opportunity cost of the upfront money (a buydown that can
-  never overtake is flagged "never").
+  never overtake is flagged "never"). When the explored down payment is under 20%, each loan's PMI
+  (charged until it crosses 80% LTV) is carried as an opportunity-cost drag, so faster-amortizing
+  options that shed PMI sooner get credit for it.
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
   closing + buyer's agent fee + lease overlap + points must leave that emergency fund intact.
@@ -84,7 +86,9 @@ Property tax is the biggest local unknown: Chester County still assesses off a 1
 effective rate on a today's-price home is lower than headline millage suggests — but it varies by
 the specific property's assessment. There are **no township presets** — set the effective rate
 directly with the slider (1–2%) or type any value (you can go below 1% or above 2%) for a real
-listing.
+listing. PA also doesn't spot-reassess on sale, so for a specific older listing you can paste its
+**actual annual tax $** to override the percentage; that override applies to the *explored home*
+only — the max-affordable strategy table keeps using the % rate.
 
 > Estimates only — not financial advice. Take-home uses the standard deduction (itemizing
 > mortgage interest + SALT could raise it), so results lean conservative. Verify any property's
