@@ -28,8 +28,11 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 - **`scenario(p,price,downFrac)`** — monthly cost for a home. Splits **`core`** (HOUSING: P&I, tax,
   insurance, PMI, HOA) from **`homeLiving`** (utilities + maintenance, treated as living expenses that
   scale with the home). PMI applies when LTV > 80%. **`cashToClose`** = down + closing + buyer's agent
-  fee + discount points + **lease overlap** (`leaseNotice × leaseRent` — rent + utilities still owed
-  through a month-to-month lease's notice period after closing).
+  fee + discount points + **lease overlap**. Lease overlap models the notice period on a month-to-month
+  lease: during it you double-pay rent, but income keeps flowing, so only the rent the monthly surplus
+  can't absorb hits savings — `leaseNotice × max(0, leaseRent − surplus)`, where `surplus = netMo −
+  totalMonthly − expenses − debt`. `render()` sets `p.netMo` (from `takeHome`) before any `scenario()`
+  call so this offset is available; without it the fallback is the full (un-netted) overlap.
 - **`efFor(p,s)`** — emergency fund = N months of (housing payment + utilities) + fixed buffer.
 - **Solvers** — `maxForDownFrac` (binary search; jointly respects monthly budget and cash-after-EF),
   `maxAllCash` (iterates because down ↔ EF are mutually dependent), `optimize` (sweeps 20–100% down for
