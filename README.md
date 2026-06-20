@@ -30,32 +30,10 @@ Open **`index.html`** in any browser — no build step, no dependencies.
   An optional **appraised value** field models an *appraisal gap*: if the home appraises below your
   price, the lender only finances against the appraised value, so you cover the difference in cash at
   closing (which shrinks the loan). Applies to the explored home only.
-- **30-yr vs 15-yr comparison.** A side-by-side block in the explorer shows the monthly P&I, total
-  housing, monthly leftover, and lifetime interest for both terms on the same home. The 15-yr is
-  priced at your base rate minus a configurable discount (default 0.75%, since 15-yr loans typically
-  price below 30-yr). Switch the **Loan term** selector to 15 yr to run the full affordability table
-  on a 15-yr instead.
 - **Single-income resilience flags.** Per person: whether their current paycheck alone covers
   mortgage + utilities, and a worst case where the other person is jobless and this person halts
   401(k)/HSA to free up every dollar.
 - **Points buy-down analysis.** Cost, monthly savings, and break-even for 0–3 discount points.
-- **30-year wealth: mortgage vs. investing.** Projects how much you'd accumulate in an S&P 500
-  index fund (default 10%/yr, compounded monthly) under seven strategies that all share an
-  *identical* cash outlay — the 15-yr P&I each month for 30 years plus the buydown's worth up
-  front — so the (fully-owned, equal) home cancels out and only the portfolio differs: **(1)** a
-  30-yr loan investing the 15-vs-30 monthly gap, **(2)** a 15-yr loan then investing the freed-up
-  payment in years 15–30, **(3)** buying the 30-yr rate down to the 15-yr rate and investing the
-  larger monthly gap, **(4)** buying it down then paying it off in 15 years before investing,
-  **(5)** a 15-yr loan with a further paid buydown, investing the smaller monthly gap then the full
-  payment after payoff, and — using that same pot of cash as a **bigger down payment** instead of a
-  buydown — **(6)** a 30-yr and **(7)** a 15-yr on the reduced loan. Scenarios 1 & 2 invest that
-  cash up front; 3–5 spend it on a buydown; 6 & 7 sink it into the down payment. The table also
-  shows each buydown's **true economic break-even** — the month its *net worth* (portfolio minus
-  remaining mortgage balance) overtakes investing that same cash instead, fully accounting for the
-  reinvested payment savings *and* the opportunity cost of the upfront money (a buydown that can
-  never overtake is flagged "never"). When the explored down payment is under 20%, each loan's PMI
-  (charged until it crosses 80% LTV) is carried as an opportunity-cost drag, so faster-amortizing
-  options that shed PMI sooner get credit for it.
 - **Emergency fund guard.** Define it as *X months of housing payment + utilities* plus a fixed
   dollar buffer; the months portion scales with whatever home you're evaluating. Down payment +
   closing + transfer tax + property-tax prepaids + buyer's agent fee + lender LLPA + lease overlap + points must leave that emergency fund intact.
@@ -78,16 +56,15 @@ Open **`index.html`** in any browser — no build step, no dependencies.
 | PA income tax | 3.07% (taxes 401k, not HSA) |
 | Local EIT | 1.0% most townships (editable) |
 | Property tax | 2025 millage × Chester County CLR 30.6% → WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328% of price |
-| Mortgage term | 30 yr default; 15-yr modeled at base rate − 0.75% (editable) |
+| Mortgage term | 30-year fixed |
 | Closing costs | 1.5% of price default (title insurance + lender/settlement fees + prepaid interest; editable) |
 | Transfer tax | 1.0% of price default — PA realty transfer tax (2% total, customarily split; buyer pays ~1%); set to 0 if the seller covers the buyer's half |
 | Property-tax prepaids | 6 months default — lender tax-escrow funding + reimbursing the seller for prepaid taxes; timing-dependent (a summer closing right after the school-tax bill can run 12+ months) |
 | Buyer's agent fee | 3% of price default (signed buyer's-agency commission; set to 0 if seller covers it) |
-| Lender LLPA | Fannie Mae loan-level price adjustment, 780+ tier, 30-yr purchase (eff. 2026-01-28): one-time % of loan by LTV — 0% (≥25% down), 0.375% (20%/15% down), 0.250% (10%/5% down); 15-yr not modeled |
+| Lender LLPA | Fannie Mae loan-level price adjustment, 780+ tier, 30-yr purchase (eff. 2026-01-28): one-time % of loan by LTV — 0% (≥25% down), 0.375% (20%/15% down), 0.250% (10%/5% down) |
 | Appraisal gap | Optional appraised value (explored home only); if below price, the shortfall is cash at closing and reduces the loan dollar-for-dollar |
 | Lease overlap | 3 mo notice × $3,900/mo rent + utilities, **net of income** — only the rent your monthly surplus can't absorb during the overlap draws down savings (editable) |
 | Utilities (auto) | $250 base + $0.16/sqft when left blank (≈ $700/mo at 2,800 sqft) |
-| S&P 500 return | 10%/yr nominal, compounded monthly (editable); no investment taxes |
 
 Property tax is the biggest local unknown: Chester County still assesses off a 1998 base, so the
 effective rate on a today's-price home is lower than headline millage suggests — but it varies by

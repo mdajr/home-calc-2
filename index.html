@@ -136,20 +136,10 @@
         <input type="range" id="points" min="0" max="4" step="0.25" value="0">
         <div class="hint">1 point = 1% of loan, paid at closing. Each point lowers the rate by the amount below.</div>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label>Rate drop / point <b id="buydownV"></b></label>
-          <input type="number" id="buydown" value="0.25" step="0.05">
-        </div>
-        <div class="field">
-          <label>Loan term</label>
-          <select id="term"><option value="30">30 yr</option><option value="15">15 yr</option></select>
-        </div>
-      </div>
       <div class="field">
-        <label>15-yr rate discount <b id="term15discV"></b></label>
-        <input type="number" id="term15disc" value="0.75" step="0.05">
-        <div class="hint">15-yr loans usually price ~0.5–0.75% below a 30-yr. Applied automatically to the 15-yr column in the comparison below — and to the whole calculator whenever the loan term above is set to 15 yr.</div>
+        <label>Rate drop / point <b id="buydownV"></b></label>
+        <input type="number" id="buydown" value="0.25" step="0.05">
+        <div class="hint">Loans are modeled as 30-year fixed.</div>
       </div>
       <div class="row2">
         <div class="field">
@@ -287,7 +277,6 @@
       <div class="kpis" id="expKpis"></div>
       <div style="margin-top:6px"><span class="hint" id="expBarLabel">Spent vs take-home pay</span><div class="barwrap"><div class="bar" id="expBar"></div></div></div>
       <div class="flags" id="expFlags"></div>
-      <details open><summary>30-yr vs 15-yr comparison</summary><div id="termCompare"></div></details>
       <details open><summary>Monthly payment breakdown</summary><div id="expMonthly"></div></details>
       <details><summary>Cash-to-close breakdown</summary><div id="expCash"></div></details>
     </div>
@@ -295,17 +284,6 @@
     <div class="panel">
       <h2>Should you buy down the rate?</h2>
       <div id="pointsAnalysis"></div>
-    </div>
-
-    <div class="panel">
-      <h2>30-year wealth: mortgage vs. investing</h2>
-      <div class="field" style="max-width:280px">
-        <label>S&amp;P 500 assumed return %/yr <b id="invReturnV"></b></label>
-        <input type="number" id="invReturn" value="10" step="0.5">
-        <input type="range" id="invReturnR" min="0" max="15" step="0.5" value="10">
-        <div class="hint">Long-run historical S&amp;P 500 nominal average ≈10%/yr. Compounded monthly.</div>
-      </div>
-      <div id="wealthAnalysis"></div>
     </div>
 
     <div class="panel">
@@ -328,12 +306,10 @@ const fmt0=n=>'$'+Math.round(n).toLocaleString();
 const pct=n=>(n).toFixed(1)+'%';
 function fedTax(ti){let t=0;for(let i=0;i<FED.length;i++){const lo=FED[i][0],hi=i<FED.length-1?FED[i+1][0]:Infinity,r=FED[i][1];if(ti>lo)t+=(Math.min(ti,hi)-lo)*r;}return t;}
 function pmt(L,annual,years){if(L<=0)return 0;const r=annual/100/12,n=years*12;if(r===0)return L/n;return L*r/(1-Math.pow(1+r,-n));}
-// Fannie Mae LLPA matrix (one-time fee at closing, % of loan), 780+ credit tier, term >15 yr,
+// Fannie Mae LLPA matrix (one-time fee at closing, % of loan), 780+ credit tier, 30-yr fixed,
 // purchase money. Keyed by LTV (= 1 − down fraction). Effective 2026-01-28. Source: Fannie Mae
-// LLPA Matrix. 15-yr (term ≤15) LLPAs are materially lower and aren't in this table, so they're
-// modeled as 0; <20% down also carries PMI (handled separately in scenario()).
-function llpaPct(ltv,term){
-  if(term<=15) return 0;                 // 15-yr schedule is lower; not modeled
+// LLPA Matrix. <20% down also carries PMI (handled separately in scenario()).
+function llpaPct(ltv){
   const l=ltv*100;
   if(l<=75.00) return 0.000;             // ≥25% down
   if(l<=80.00) return 0.375;             // 20% down
@@ -355,13 +331,12 @@ function I(){
     eit:+$('eit').value, ptax:+$('ptax').value, ptaxDollar:($('ptaxDollar').value.trim()===''?null:+$('ptaxDollar').value),
     appraised:($('appraised').value.trim()===''?null:+$('appraised').value),
     rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
-    term:+$('term').value, term15disc:+$('term15disc').value, pmi:+$('pmi').value, close:+$('close').value, agent:+$('agent').value,
+    pmi:+$('pmi').value, close:+$('close').value, agent:+$('agent').value,
     xfer:+$('xfer').value, taxProrate:+$('taxProrate').value,
     leaseNotice:+$('leaseNotice').value, leaseRent:+$('leaseRent').value,
     ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
     expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
-    cushion:+$('cushion').value,
-    invReturn:+$('invReturn').value
+    cushion:+$('cushion').value
   };
 }
 
@@ -417,9 +392,8 @@ function scenario(p,price,downFrac){
   const apprGap=p.apprGap||0;          // cash to bridge a low appraisal (explored home only)
   const loan=Math.max(0,price-down-apprGap); // lender finances against appraised value; gap cash shrinks the loan
   const ltv=price>0?loan/price:0;
-  const termDisc=(p.term===15)? (p.term15disc||0) : 0; // 15-yr loans price below 30-yr
-  const eff=Math.max(0.5, p.rate - p.points*p.buydown - termDisc); // effective rate after points & term
-  const pi=pmt(loan,eff,p.term);
+  const eff=Math.max(0.5, p.rate - p.points*p.buydown); // effective rate after points
+  const pi=pmt(loan,eff,30);                             // 30-year fixed
   const pmi=(ltv>0.80)? p.pmi/100*loan/12 : 0;
   const tax=p.ptax/100*price/12;
   const ins=p.ins/100*price/12;
@@ -430,7 +404,7 @@ function scenario(p,price,downFrac){
   const xferTax=p.xfer/100*price;      // PA realty transfer tax (buyer's customary half), one-time at closing
   const taxProrate=(p.taxProrate||0)*tax; // tax escrow funding + seller reimbursement, in months of property tax
   const agentFee=p.agent/100*price;    // buyer's agency commission, paid at closing
-  const llpaRate=llpaPct(ltv,p.term);  // Fannie Mae loan-level price adjustment (780+ tier)
+  const llpaRate=llpaPct(ltv);         // Fannie Mae loan-level price adjustment (780+ tier)
   const llpaCost=llpaRate/100*loan;    // one-time, % of loan, due at closing
   const core=pi+pmi+tax+ins+hoa;       // HOUSING: mortgage payment only
   const homeLiving=maint+util;          // home-driven LIVING expenses (counted with food/etc.)
@@ -530,7 +504,7 @@ function render(){
   $('ptaxDollarV').textContent=p.ptaxDollar!=null?fmt(p.ptaxDollar)+'/yr (overrides %)':'off';
   $('appraisedV').textContent=p.appraised!=null?fmt(p.appraised):'≥ price';
   $('rateV').textContent=p.rate+'%'; $('pointsV').textContent=p.points+' pts';
-  $('buydownV').textContent=p.buydown+'%'; $('term15discV').textContent='−'+p.term15disc+'%';
+  $('buydownV').textContent=p.buydown+'%';
   $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%'; $('agentV').textContent=p.agent+'%';
   $('xferV').textContent=p.xfer+'%'; $('taxProrateV').textContent=p.taxProrate+' mo';
   $('leaseNoticeV').textContent=p.leaseNotice+' mo'; $('leaseRentV').textContent=fmt(p.leaseRent)+'/mo';
@@ -538,7 +512,6 @@ function render(){
   $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
   ['exFood','exCare','exCar','exMisc','exOther'].forEach(id=>{const e=$(id+'V'); if(e) e.textContent=fmt(+$(id).value);});
   $('cushionV').textContent=fmt(p.cushion); $('expensesTotalV').textContent=fmt(p.expenses);
-  $('invReturnV').textContent=p.invReturn+'%';
   // keep number<->range pairs in sync done via listeners
 
   const th=takeHome(p);
@@ -690,30 +663,23 @@ function render(){
     <tr><td>Buyer's agent fee (${p.agent}%)</td><td>${fmt(es.agentFee)}</td></tr>
     <tr><td>Lease overlap from savings<br><span class="hint">${p.leaseNotice} mo × (${fmt(p.leaseRent)} rent − ${fmt(es.surplus)}/mo income surplus${es.leaseDrainMo<=0?' — fully covered by income':''})</span></td><td>${fmt(es.leaseCarryover)}</td></tr>
     <tr><td>Discount points (${p.points})</td><td>${fmt(es.pointsCost)}</td></tr>
-    <tr><td>Lender LLPA fee<br><span class="hint">${es.llpaRate.toFixed(3)}% of loan @ ${(es.ltv*100).toFixed(0)}% LTV (780+ tier${p.term<=15?', n/a on 15-yr':''})</span></td><td>${fmt(es.llpaCost)}</td></tr>
+    <tr><td>Lender LLPA fee<br><span class="hint">${es.llpaRate.toFixed(3)}% of loan @ ${(es.ltv*100).toFixed(0)}% LTV (780+ tier)</span></td><td>${fmt(es.llpaCost)}</td></tr>
     <tr class="total"><td>Cash to close</td><td>${fmt(es.cashToClose)}</td></tr>
     <tr><td>Cash on hand</td><td>${fmt(p.cash)}</td></tr>
     <tr><td>Remaining after close</td><td style="color:${efAfter>=esEf?'var(--good)':'var(--bad)'}">${fmt(efAfter)}</td></tr>
     <tr><td>Emergency fund needed<br><span class="hint">${p.efMonths} mo × ${fmt(es.pi+es.pmi+es.tax+es.ins+es.hoa+es.util)}/mo + ${fmt(p.efFixed)}</span></td><td>${fmt(esEf)}</td></tr>
   </table>`;
 
-  // ----- 30-yr vs 15-yr comparison (on the explored home) -----
-  renderTermCompare(pe,th,expPrice,expDown);
-
   // ----- points analysis (on the explore loan) -----
   renderPoints(pe,th,expPrice,expDown);
-
-  // ----- 30-year wealth projection (on the explored home) -----
-  renderWealth(p,expPrice,expDown);
 
   // ----- assumptions -----
   $('assump').innerHTML=`
     <b>Tax year 2026, MFJ.</b> Std deduction $${STD_DED.toLocaleString()}; SS wage base $${SS_WAGE_BASE.toLocaleString()}/person; 401(k) $${MAX_401K.toLocaleString()}/person; HSA family $${HSA_FAMILY.toLocaleString()}.
     PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
     Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%. PA doesn't spot-reassess on sale, so for a specific older listing you can paste its actual annual tax $ to override the %; that override applies to the explored home only (the max-affordable table keeps the % rate).
-    Mortgage term defaults to 30 yr; a 15-yr loan is modeled at your base rate minus the 15-yr discount (default ${p.term15disc}%, since 15-yr loans typically price ~0.5–0.75% below 30-yr). Lifetime-interest figures are P&amp;I only and assume the loan is held to term.
-    <b>Cash to close</b> = down payment + any appraisal gap + closing costs (${p.close}% of price: title insurance + lender/settlement fees + prepaid interest) + <b>transfer tax</b> (${p.xfer}% of price) + <b>property-tax prepaids</b> (${p.taxProrate} months) + buyer's agent fee (${p.agent}% of price) + lender LLPA + lease overlap + any discount points. <b>Transfer tax</b> is PA's realty transfer tax: 2% of price total, customarily split, so the buyer pays ~1%. <b>Property-tax prepaids</b> cover both the lender's tax-escrow funding and reimbursing the seller for taxes they prepaid; it's charged as a number of months of the property tax and is highly timing-dependent — a summer closing right after the annual school-tax bill can run 12+ months, while one just before it runs near zero. The <b>appraisal gap</b> (explored home only) applies when you enter an appraised value below your price: lenders finance against the lower of price or appraisal, so you cover the difference in cash, which reduces the loan dollar-for-dollar. The buyer's agent fee reflects your signed buyer's-agency commission; set it to 0 if the seller covers it as a concession. <b>LLPA</b> (Fannie Mae loan-level price adjustment, 780+ credit tier, 30-yr purchase, eff. 2026-01-28) is a one-time fee charged as a % of the loan based on LTV — 0% at ≤75% LTV (≥25% down), 0.375% at 75–80% (20% down), 0.375% at 80–85% (15%), 0.250% at 85–95% (10–5%); it can alternatively be priced into the rate. 15-yr loans use a lower schedule not modeled here (treated as 0). <b>Lease overlap</b> models the ${p.leaseNotice}-month notice on your month-to-month lease (${fmt(p.leaseRent)}/mo rent + utilities): during those months you double-pay, but your paychecks keep coming, so only the portion your monthly income surplus can't absorb (${fmt(es.leaseDrainMo)}/mo here) draws down savings — the rest is funded by income, not your closing cash. Utilities auto-estimate at $250 base + $0.16/sqft when left blank.
-    The <b>30-year wealth</b> section projects an S&amp;P 500 index at ${p.invReturn}%/yr (compounded monthly), with no investment taxes or sequence-of-returns risk; the strategies share an identical cash outlay, so the home (paid off and equal in every case at year 30) cancels and only the portfolio differs. When the explored down payment is under 20%, each loan's PMI (until it crosses 80% LTV) is charged as an opportunity-cost drag, so options that shed PMI faster (15-yr, bigger down payment) are credited for it.<br>
+    All loans are modeled as <b>30-year fixed</b>. Lifetime-interest figures are P&amp;I only and assume the loan is held to term.
+    <b>Cash to close</b> = down payment + any appraisal gap + closing costs (${p.close}% of price: title insurance + lender/settlement fees + prepaid interest) + <b>transfer tax</b> (${p.xfer}% of price) + <b>property-tax prepaids</b> (${p.taxProrate} months) + buyer's agent fee (${p.agent}% of price) + lender LLPA + lease overlap + any discount points. <b>Transfer tax</b> is PA's realty transfer tax: 2% of price total, customarily split, so the buyer pays ~1%. <b>Property-tax prepaids</b> cover both the lender's tax-escrow funding and reimbursing the seller for taxes they prepaid; it's charged as a number of months of the property tax and is highly timing-dependent — a summer closing right after the annual school-tax bill can run 12+ months, while one just before it runs near zero. The <b>appraisal gap</b> (explored home only) applies when you enter an appraised value below your price: lenders finance against the lower of price or appraisal, so you cover the difference in cash, which reduces the loan dollar-for-dollar. The buyer's agent fee reflects your signed buyer's-agency commission; set it to 0 if the seller covers it as a concession. <b>LLPA</b> (Fannie Mae loan-level price adjustment, 780+ credit tier, 30-yr purchase, eff. 2026-01-28) is a one-time fee charged as a % of the loan based on LTV — 0% at ≤75% LTV (≥25% down), 0.375% at 75–80% (20% down), 0.375% at 80–85% (15%), 0.250% at 85–95% (10–5%); it can alternatively be priced into the rate. <b>Lease overlap</b> models the ${p.leaseNotice}-month notice on your month-to-month lease (${fmt(p.leaseRent)}/mo rent + utilities): during those months you double-pay, but your paychecks keep coming, so only the portion your monthly income surplus can't absorb (${fmt(es.leaseDrainMo)}/mo here) draws down savings — the rest is funded by income, not your closing cash. Utilities auto-estimate at $250 base + $0.16/sqft when left blank.<br>
     Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
     <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k)/limits</a> ·
@@ -723,37 +689,6 @@ function render(){
     <a href="https://www.dasd.org/departments/business/taxes" target="_blank">DASD taxes</a> ·
     <a href="https://www.wcasd.net" target="_blank">WCASD</a>.
     <br><i>Estimates only — not financial advice. Verify a specific property's assessment and get lender quotes.</i>`;
-}
-
-// ---------- 30-yr vs 15-yr side-by-side (same price & down) ----------
-function renderTermCompare(p,th,price,downFrac){
-  const cols=[30,15].map(yrs=>{
-    const pp=Object.assign({},p,{term:yrs});
-    const s=scenario(pp,price,downFrac);
-    const totalPaid=s.pi*yrs*12;        // P&I only over the life of the loan
-    const interest=totalPaid-s.loan;
-    const leftover=th.netMo - s.totalMonthly - p.expenses - p.debt;
-    return {yrs,s,totalPaid,interest,leftover};
-  });
-  const [c30,c15]=cols;
-  const piDiff=c15.s.pi-c30.s.pi;          // extra monthly cost of the 15-yr
-  const intSave=c30.interest-c15.interest; // lifetime interest saved by the 15-yr
-  const cell=(c,fn)=>`<td>${fn(c)}</td>`;
-  const row=(label,fn)=>`<tr><td>${label}</td>${cell(c30,fn)}${cell(c15,fn)}</tr>`;
-  $('termCompare').innerHTML=`
-    <div class="hint" style="margin-bottom:8px">Same ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(c30.s.loan)}). 15-yr rate = your ${p.rate}% base − ${p.term15disc}% discount${p.points>0?', less points':''} = <b>${c15.s.eff.toFixed(2)}%</b> vs 30-yr <b>${c30.s.eff.toFixed(2)}%</b>.</div>
-    <table>
-      <thead><tr><th></th><th>30-yr</th><th>15-yr</th></tr></thead>
-      <tbody>
-        ${row('Rate (after points/term)',c=>c.s.eff.toFixed(2)+'%')}
-        ${row('Principal &amp; interest /mo',c=>fmt(c.s.pi))}
-        ${row('Total housing /mo',c=>fmt(c.s.core))}
-        ${row('Leftover /mo',c=>`<span style="color:${c.leftover>=p.cushion?'var(--good)':c.leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(c.leftover)}</span>`)}
-        ${row('Lifetime interest',c=>fmt(c.interest))}
-        ${row('Total P&amp;I paid',c=>fmt(c.totalPaid))}
-      </tbody>
-    </table>
-    <div class="note">The 15-yr costs <b>${fmt(piDiff)}/mo more</b> in P&amp;I but pays off <b>15 years sooner</b> and saves <b>${fmt(intSave)}</b> in interest over the life of the loan. The bigger 15-yr payment also raises your emergency-fund target and shrinks monthly slack — check the leftover row above stays above your ${fmt(p.cushion)} cushion. To run the full affordability table on a 15-yr, switch <b>Loan term</b> to 15 yr.</div>`;
 }
 
 function renderPoints(p,th,price,downFrac){
@@ -788,118 +723,6 @@ function renderPoints(p,th,price,downFrac){
     <div class="note">With ${fmt(cashFree)} of cash above your emergency fund, points compete with your down payment. Buying points helps most if you'll <b>keep the loan past the break-even</b> (often 4–7 yrs) and your budget is monthly-constrained. If you're cash-constrained, that money usually does more as down payment (shrinks the loan <i>and</i> can kill PMI).</div>`;
 }
 
-// ---------- 30-year wealth projection: mortgage strategy vs. investing ----------
-// All four scenarios have an IDENTICAL cash outlay — the 15-yr P&I each month for
-// 360 months, plus the buydown's worth of cash up front — so the only thing that
-// differs is what happens to that money. At year 30 the home is paid off and worth
-// the same in every case, so it cancels out: we compare the investment portfolio.
-function projectWealth(p,price,downFrac){
-  const loan=price*(1-downFrac);
-  const N=360;                                   // 30 years of months
-  const m=Math.pow(1+(p.invReturn||0)/100,1/12)-1; // monthly return (annual compounded monthly)
-  // effective rates, consistent with scenario(): include any purchased points
-  const r30=Math.max(0.5, p.rate - p.points*p.buydown);
-  const r15=Math.max(0.5, p.rate - p.points*p.buydown - (p.term15disc||0));
-  const r15bd=Math.max(0.5, r15 - (p.term15disc||0)); // 15-yr rate with a further paid buydown
-  const P30=pmt(loan,r30,30);     // 30-yr payment at the 30-yr rate
-  const P15=pmt(loan,r15,15);     // 15-yr payment at the (discounted) 15-yr rate
-  const P30bd=pmt(loan,r15,30);   // 30-yr payment after buying the rate down to r15
-  const P15bd=pmt(loan,r15bd,15); // 15-yr payment after a further paid buydown
-  // cash to buy r30 down to r15: points needed × 1% of loan each
-  const ptsNeeded=p.buydown>0 ? (p.term15disc||0)/p.buydown : 0;
-  const B=ptsNeeded/100*loan;
-  // alternative use of B: add it to the down payment, shrinking the loan instead
-  const loanDp=Math.max(0,loan-B);
-  const P30dp=pmt(loanDp,r30,30);  // 30-yr payment on the reduced loan (no buydown)
-  const P15dp=pmt(loanDp,r15,15);  // 15-yr payment on the reduced loan (no buydown)
-  // monthly contribution schedules
-  const cf1=t=>P15-P30;                 // 30-yr loan, invest the 15-vs-30 gap every month
-  const cf2=t=>t>180?P15:0;             // 15-yr loan, then invest the freed-up payment yrs 15–30
-  const cf3=t=>P15-P30bd;               // bought-down 30-yr, invest the (bigger) gap every month
-  const cf4=t=>t>180?P15:0;             // bought-down 30-yr paid off in 15 yrs, then invest yrs 15–30
-  const cf5=t=>t>180?P15:(P15-P15bd);   // 15-yr bought down further: invest the gap yrs 1–15, then P15
-  const cf6=t=>P15-P30dp;               // 30-yr on reduced loan, invest the gap every month
-  const cf7=t=>t>180?P15:(P15-P15dp);   // 15-yr on reduced loan: invest the gap yrs 1–15, then P15
-  const rows=[
-    {n:'1. 30-yr + invest the difference',
-     desc:`Keep the 30-yr loan (${r30.toFixed(2)}%), pay ${fmt(P30)}/mo, invest the ${fmt(P15-P30)}/mo you'd have spent on a 15-yr. Buydown cash (${fmt(B)}) invested up front.`,
-     lump:B, cf:cf1, rate:r30, interest:P30*360-loan, buydown:0, loanStart:loan},
-    {n:'2. 15-yr, then invest the payment',
-     desc:`Take the 15-yr loan (${r15.toFixed(2)}%) at ${fmt(P15)}/mo; once it's paid off, invest that ${fmt(P15)}/mo for years 15–30. Buydown cash (${fmt(B)}) invested up front.`,
-     lump:B, cf:cf2, rate:r15, interest:P15*180-loan, buydown:0, loanStart:loan},
-    {n:'3. Buy down 30-yr + invest the difference',
-     desc:`Spend ${fmt(B)} to buy the 30-yr down to ${r15.toFixed(2)}% (pay ${fmt(P30bd)}/mo), invest the ${fmt(P15-P30bd)}/mo difference every month.`,
-     lump:0, cf:cf3, rate:r15, interest:P30bd*360-loan, buydown:B, loanStart:loan, vs:0},
-    {n:'4. Buy down 30-yr, pay off in 15, then invest',
-     desc:`Spend ${fmt(B)} to buy the 30-yr down to ${r15.toFixed(2)}%, then pay ${fmt(P15)}/mo to retire it in 15 yrs; invest that ${fmt(P15)}/mo for years 15–30.`,
-     lump:0, cf:cf4, rate:r15, interest:P15*180-loan, buydown:B, loanStart:loan, vs:1},
-    {n:'5. 15-yr + buy down a further 0.75%',
-     desc:`Take the 15-yr loan and spend ${fmt(B)} to buy it down a further ${(p.term15disc||0)}% to ${r15bd.toFixed(2)}% (pay ${fmt(P15bd)}/mo). Invest the ${fmt(P15-P15bd)}/mo difference for years 1–15, then the full ${fmt(P15)}/mo once it's paid off for years 15–30.`,
-     lump:0, cf:cf5, rate:r15bd, interest:P15bd*180-loan, buydown:B, loanStart:loan, vs:1},
-    {n:'6. 30-yr, the buydown cash as down payment instead',
-     desc:`Same ${fmt(B)} — but instead of buying the rate down, add it to the down payment, cutting the loan to ${fmt(loanDp)} at the full ${r30.toFixed(2)}% (pay ${fmt(P30dp)}/mo). Invest the ${fmt(P15-P30dp)}/mo difference every month.`,
-     lump:0, cf:cf6, rate:r30, interest:P30dp*360-loanDp, buydown:0, loanStart:loanDp},
-    {n:'7. 15-yr, the buydown cash as down payment instead',
-     desc:`Same ${fmt(B)} added to the down payment, cutting the loan to ${fmt(loanDp)} at the 15-yr ${r15.toFixed(2)}% (pay ${fmt(P15dp)}/mo). Invest the ${fmt(P15-P15dp)}/mo difference for years 1–15, then the full ${fmt(P15)}/mo for years 15–30.`,
-     lump:0, cf:cf7, rate:r15, interest:P15dp*180-loanDp, buydown:0, loanStart:loanDp},
-  ];
-  // Simulate each strategy month by month: grow the portfolio, amortize the loan, and
-  // (when the explored down payment is <20%) charge PMI. PMI is real cash out the door that
-  // can't be invested, so we accumulate it as an opportunity-cost "drag" compounded at the
-  // same return — this naturally penalizes strategies that carry PMI longer (a 15-yr or a
-  // bigger-down-payment loan crosses 80% LTV and sheds PMI sooner than a 30-yr). At >=20%
-  // down the drag is zero and the math is unchanged. Net worth = portfolio − remaining loan
-  // balance − PMI drag (the home value is identical everywhere, so it cancels).
-  const sim=r=>{
-    let port=r.lump, bal=r.loanStart, drag=0, rmo=r.rate/1200, path=[port-bal];
-    for(let t=1;t<=N;t++){
-      const pmi=(bal/price>0.80)? p.pmi/100*r.loanStart/12 : 0; // PMI while LTV>80% (on original loan)
-      const pay=P15-r.cf(t);                 // P&I; every strategy spends P15/mo on housing+investing
-      if(bal>1e-6){ const intr=bal*rmo; bal=Math.max(0,bal-(pay-intr)); }
-      port=port*(1+m)+r.cf(t);
-      drag=drag*(1+m)+pmi;                    // PMI paid, carried forward at the investment return
-      path.push(port-bal-drag);
-    }
-    return {port,drag,path};
-  };
-  const crossMonth=(a,b)=>{ for(let t=1;t<=N;t++) if(a[t]>=b[t]) return t; return null; };
-  rows.forEach(r=>{ const s=sim(r); r.portfolio=s.port-s.drag; r.pmiPaid=s.drag; r.nw=s.path; });
-  // TRUE economic break-even for a buydown: the month its net worth overtakes the SAME cash
-  // invested instead (its `vs` sibling) — counting reinvested savings AND opportunity cost.
-  rows.forEach(r=>{ r.beMonths = (r.vs!=null) ? crossMonth(r.nw, rows[r.vs].nw) : null; r.beVs = (r.vs!=null)?rows[r.vs]:null; });
-  return {rows,loan,B,P15,P30,P30bd,r30,r15,ptsNeeded};
-}
-
-function renderWealth(p,price,downFrac){
-  if(price*(1-downFrac)<=0){ $('wealthAnalysis').innerHTML='<div class="hint">Set a price and a down payment below 100% to project.</div>'; return; }
-  const w=projectWealth(p,price,downFrac);
-  const best=w.rows.reduce((a,b)=>b.portfolio>a.portfolio?b:a);
-  const worst=w.rows.reduce((a,b)=>b.portfolio<a.portfolio?b:a);
-  const beTxt=r=>{
-    if(r.vs==null) return '—';
-    if(r.beMonths==null) return '<span style="color:var(--bad)">never</span>';
-    return Math.round(r.beMonths)+' mo ('+(r.beMonths/12).toFixed(1)+' yr)';
-  };
-  const tr=w.rows.map(r=>`<tr ${r===best?'class="total"':''}>
-    <td title="${r.desc.replace(/"/g,'&quot;')}">${r.n}${r===best?' <span class="pill good">most</span>':''}</td>
-    <td>${r.rate.toFixed(2)}%</td>
-    <td>${r.lump>0?fmt(r.lump):'—'}</td>
-    <td title="${r.vs!=null?('vs. '+r.beVs.n).replace(/"/g,'&quot;'):''}">${beTxt(r)}</td>
-    <td>${fmt(r.interest)}</td>
-    <td><b>${fmt(r.portfolio)}</b></td>
-  </tr>`).join('');
-  const spread=best.portfolio-worst.portfolio;
-  const pmiNote = downFrac<0.20 ? ` Because this is <b>${(downFrac*100).toFixed(0)}% down (under 20%)</b>, each loan carries PMI until it crosses 80% LTV; that PMI is charged as an opportunity-cost drag, so faster-amortizing options (15-yr, bigger down payment) that shed it sooner are credited accordingly.` : '';
-  $('wealthAnalysis').innerHTML=`
-    <div class="hint" style="margin-bottom:8px">On the explored ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(w.loan)}). 30-yr rate <b>${w.r30.toFixed(2)}%</b>; 15-yr / bought-down rate <b>${w.r15.toFixed(2)}%</b> (buydown ≈ ${w.ptsNeeded.toFixed(2)} pts = <b>${fmt(w.B)}</b>). All seven spend the <b>same cash</b>: the 15-yr payment (${fmt(w.P15)}/mo) for 30 years, plus the buydown's worth up front — so the home is owned free-and-clear at year 30 in every case and only the investment account differs.${pmiNote}</div>
-    <table>
-      <thead><tr><th>Scenario</th><th>Loan rate</th><th>Invested up front</th><th>Break-even vs. investing</th><th>Interest to bank</th><th>Portfolio @ 30 yr</th></tr></thead>
-      <tbody>${tr}</tbody>
-    </table>
-    <div class="flags">${w.rows.map(r=>`<div class="flag" style="align-items:flex-start"><span>${r.n.split('.')[0]}.</span><span class="hint">${r.desc}</span></div>`).join('')}</div>
-    <div class="note"><b>${best.n.replace(/^\d+\.\s*/,'')}</b> ends with the most: <b>${fmt(best.portfolio)}</b>, about <b>${fmt(spread)}</b> ahead of the lowest. Because every option costs the same out of pocket, the gap is pure opportunity cost — investing early and keeping more cash in the market (rather than sinking it into a faster payoff, a rate buydown, or a bigger down payment) usually wins when the S&amp;P return (${p.invReturn}%) beats the mortgage rate. Drop the return toward the mortgage rate to see the strategies converge. <b>Break-even vs. investing</b> is the <i>true</i> economic crossover: the month a buydown's <b>net worth</b> (portfolio − remaining mortgage) finally overtakes putting that same cash in the market instead (scenario 3 vs 1; scenarios 4 & 5 vs 2) — so it fully counts the reinvested payment savings <i>and</i> the opportunity cost of the upfront money. Sell or refinance before that month and the buydown was the wrong call; "never" means it's mathematically dominated (e.g. buying a 30-yr down just to pay it off in 15 never beats simply taking the 15-yr and investing the cash). <i>Assumes steady ${p.invReturn}%/yr returns with no taxes or sequence-of-returns risk — real markets are bumpy; this is a long-run illustration, not a guarantee.</i></div>`;
-}
-
 // ---------- load a strategy row into the explorer (so monthly numbers match) ----------
 window.loadStrat=function(price,dpPct){
   const ep=$('expPrice');
@@ -917,7 +740,7 @@ function pair(numId,rangeId){
   n.addEventListener('input',()=>{r.value=n.value;render();});
   r.addEventListener('input',()=>{n.value=r.value;render();});
 }
-['incomeA','incomeB','cash','rate','ptax','invReturn'].forEach(id=>pair(id,id+'R'));
+['incomeA','incomeB','cash','rate','ptax'].forEach(id=>pair(id,id+'R'));
 
 // ---------- persistence (localStorage) + shareable links ----------
 const LS_KEY='homecalc_v1';

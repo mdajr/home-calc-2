@@ -20,9 +20,9 @@ There is **no build step and no dependencies** — open `index.html` in a browse
 
 - **Constants (2026 tax year)** — `STD_DED`, `SS_WAGE_BASE`, `MAX_401K`, `HSA_FAMILY`, `FED` brackets,
   etc. Update these when tax figures change for a new year.
-- **`llpaPct(ltv,term)`** — Fannie Mae loan-level price adjustment lookup (hardcoded **780+ credit
-  tier**, 30-yr purchase, eff. 2026-01-28). Returns a one-time fee as a % of loan by LTV bucket; 15-yr
-  (`term≤15`) returns 0 (lower schedule not modeled). Update the table when the matrix changes.
+- **`llpaPct(ltv)`** — Fannie Mae loan-level price adjustment lookup (hardcoded **780+ credit
+  tier**, 30-yr purchase, eff. 2026-01-28). Returns a one-time fee as a % of loan by LTV bucket.
+  Update the table when the matrix changes. (Loans are 30-year fixed only — there is no term selector.)
 - **`I()`** — reads every input into one params object `p`. Utilities auto-estimate when the field is
   blank (`250 + 0.16*sqft` ≈ $700/mo at 2,800 sqft).
 - **`takeHome(p)`** — 2026 MFJ take-home: federal brackets, FICA (SS cap + Medicare surtax), PA 3.07%,
@@ -35,7 +35,7 @@ There is **no build step and no dependencies** — open `index.html` in a browse
   prepaid interest) + **transfer tax** (`p.xfer/100 × price`; PA realty transfer tax, buyer's customary
   ~1% half of the 2% total) + **property-tax prepaids** (`p.taxProrate` months × monthly property tax;
   lender escrow funding + seller reimbursement, timing-dependent) + buyer's agent fee + discount points +
-  **LLPA** (`llpaPct(ltv,term)/100 × loan`, one-time) + **lease overlap**. The appraisal gap shrinks the
+  **LLPA** (`llpaPct(ltv)/100 × loan`, one-time) + **lease overlap**. The appraisal gap shrinks the
   loan dollar-for-dollar (`loan = price − down − apprGap`), since the lender finances against the lower
   of price/appraisal. Lease overlap models the notice period on a month-to-month
   lease: during it you double-pay rent, but income keeps flowing, so only the rent the monthly surplus
@@ -74,7 +74,7 @@ There is **no build step and no dependencies** — open `index.html` in a browse
   An optional **`ptaxDollar`** field overrides the % with a flat annual $ (PA doesn't spot-reassess on
   sale).
 - **Explored-home-only overrides go through `pe`.** `render()` builds a `pe` params copy and passes it
-  to `es`, `renderTermCompare`, `renderPoints` (never the solvers/strategy table, which have no specific
+  to `es` and `renderPoints` (never the solvers/strategy table, which have no specific
   listing). `pe` carries: (1) `ptax` recomputed as `ptaxDollar/expPrice*100` when the $ override is set;
   (2) `apprGap = max(0, expPrice − appraised)` when an appraised value is entered. Base `p` leaves both
   off so the strategy table keeps the slider % and no gap. When adding a new explored-only knob, set it
