@@ -62,6 +62,10 @@ There is **no build step and no dependencies** — open `index.html` in a browse
   *housing*, so "% of income on housing" reflects the mortgage payment only. Keep this distinction.
 - **Property tax has no presets.** It's entered directly as an effective % of price via a slider
   (1–2%) with manual entry allowed outside that range. Don't reintroduce a township→rate lookup table.
+  An optional **`ptaxDollar`** field overrides the % with a flat annual $ (PA doesn't spot-reassess on
+  sale). It applies to the **explored home only** — `render()` builds a `pe` params copy with `ptax`
+  recomputed as `ptaxDollar/expPrice*100` and passes `pe` to `es`, `renderTermCompare`, `renderPoints`;
+  the solvers/strategy table keep the slider %.
 - **Conservative by design.** Take-home uses the standard deduction (no itemized mortgage-interest /
   SALT), so results lean low. Note this when touching the tax math.
 - **Keep it single-file and dependency-free.** Don't add a build step, framework, or external libs.
