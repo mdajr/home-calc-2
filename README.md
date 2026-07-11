@@ -15,7 +15,9 @@ see git history for that version.)*
   lender's own fees ($), and an optional per-lender **escrow override** (LE Section G — escrow
   demands differ by lender). Prepaid interest is computed per loan from its rate and the
   settlement date. An optional **"Sheet P&I"** field verifies transcription: the card shows
-  ✓ when the computed payment matches the lender's quoted P&I.
+  ✓ when the computed payment matches the lender's quoted P&I. **Quoted-on / rate-good-through
+  dates** flag quotes ≥3 days old (rates reprice daily) and pricing that expires before
+  settlement (lock too short, or an unlocked LE's cost-expiration date).
 - **Copy/paste guide.** A collapsible "Where to find these numbers on a lender's sheet" note
   maps official Loan Estimate sections (A/B/G/J) and Chase-style rate menus onto the card
   fields — including the trick of deriving points $ from fee differences between menu rows.
@@ -30,18 +32,23 @@ see git history for that version.)*
 - **Adjustable down payment.** Slider (5–50%, default 20%). Below 20% adds PMI, which
   auto-terminates in the model when the balance amortizes to 78% of price. An optional
   appraised value models an appraisal gap (extra cash, smaller loan).
-- **Side-by-side table.** Per loan: P&I, PMI, total monthly (PITI+HOA), % of take-home,
-  monthly leftover, lender charges, **break-even**, cash to close, cash remaining, and
-  5/10-year true cost (10-year best flagged).
+- **Side-by-side table.** Per loan: P&I, PMI, total monthly (PITI+HOA), lender charges,
+  **break-even**, cash to close, cash remaining, and 5/10-year true cost. The 10-year best is
+  flagged; every other loan shows **"+$X credit to tie"** — the extra lender credit that would
+  make it match the best loan over 10 years (the number to take back to that loan officer).
+- **Opportunity cost of upfront cash.** A **cash yield** input (default 4%, e.g. VUSXX)
+  discounts future interest/PMI to today's dollars in the true-cost metric, since points are
+  paid upfront while rate savings arrive over years. Set 0 for plain nominal totals.
 - **Break-even vs the cheapest-upfront baseline.** The loan with the lowest lender charges is
-  the baseline; every other loan's break-even is the month its cumulative cost drops below
-  the baseline's — i.e. how long you must keep the loan before refinancing/selling stops
-  forfeiting the points/fee premium ("never" = the rate advantage can't repay it in 30 years).
+  the baseline; every other loan's break-even is the month its cumulative (discounted) cost
+  drops below the baseline's — i.e. how long you must keep the loan before refinancing/selling
+  stops forfeiting the points/fee premium ("never" = can't repay it in 30 years).
 - **Cost-over-time chart.** All loans plotted for 30 years with a metric toggle:
-  - **True cost** — cumulative interest + PMI + lender charges (principal builds equity, so
-    it isn't a cost). Dots mark each loan's break-even vs the baseline.
+  - **True cost** — cumulative interest + PMI + lender charges, discounted at the cash yield
+    (principal builds equity, so it isn't a cost). Dots mark each loan's break-even vs the
+    baseline.
   - **Total outlay** — all cash out the door including principal, taxes, insurance, HOA and
-    upfront costs.
+    upfront costs (nominal, undiscounted).
   - **Remaining balance.**
   Hover (or focus + arrow keys) for a crosshair readout of every loan at any month; a
   milestone table gives the same values at 3/5/7/10/15/20/30 years.
@@ -49,7 +56,7 @@ see git history for that version.)*
   the closing-cost report's structure (closing costs → escrows → seller reimbursements →
   earnest/POC credits).
 - **Budget context.** 2026 MFJ take-home (both maxing 401(k) + HSA, standard deduction),
-  monthly leftover vs. a cushion target, back-end DTI, and single-income worst-case flags.
+  back-end DTI, and single-income worst-case flags.
 - **Persistence & sharing.** Everything (including the loan list) auto-saves to the browser;
   "copy a share link" packs the exact scenario into a URL. Opening a link is non-destructive.
 
@@ -72,10 +79,13 @@ see git history for that version.)*
 | Paid outside closing | $2,475 (appraisal $375 + year-1 insurance $2,100) | KW estimate |
 | Default lender fees | $750 (appraisal + credit report + doc prep + flood cert + tax service) | KW estimate |
 | PMI (if <20% down) | 0.6%/yr until 78% LTV | assumption |
+| Cash yield (discount rate) | 4%/yr (≈ VUSXX) | assumption |
 
 Default loan cards are the actual lender quotes in hand: the US Financial/UWM Loan Estimate
-of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow) and all five rows of Chase's rate
-menu of 7/10/26 (6.625% ≈0-pt baseline down to 6.125%, points derived from menu fee deltas).
+of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow — **not rate-locked**; its pricing
+expires 7/23/26) and all five rows of Chase's rate menu of 7/10/26 (6.625% ≈0-pt baseline
+down to 6.125%, points derived from menu fee deltas; menu prices a 45-day lock → good
+through 8/24/26).
 
 No separate LLPA is modeled — real rate-sheet pricing already embeds it.
 

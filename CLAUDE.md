@@ -44,19 +44,27 @@ Never commit the gitignored source documents (PDFs, screenshots).
 
 - **CALC CORE (pure, no DOM)** — tax constants (2026 MFJ), `pmt()`, `prepaidDays(dateStr)`
   (settlement day → month-end, inclusive; 8/12 → 20 days), `loanCalc(p,ln)` (the heart:
-  amortization arrays `bal/cumInt/cumPmi` indexed 0..360, PMI until 78% of price, lender
-  charges, cash-to-close waterfall), `costAt/outlayAt/metricAt` (chart metrics),
+  amortization arrays `bal/cumInt/cumPmi/cumCostD` indexed 0..360 — `cumCostD` is interest+PMI
+  discounted at the cash-yield rate `p.disc` (opportunity cost of upfront cash; 0 reduces it
+  to nominal) — PMI until 78% of price, lender charges, cash-to-close waterfall),
+  `costAt/outlayAt/metricAt` (chart metrics; `costAt` = lender charges at face value +
+  `cumCostD`, i.e. present value; outlay is deliberately nominal),
   `baselineIdx(lcs)` / `breakEvenMonth(lcBase,lc)` (the cheapest-upfront loan is the
   break-even baseline; break-even = first month a loan's cumulative true cost drops below
   the baseline's, i.e. when its points/fee premium is repaid — refi before then loses it),
   `takeHome(p)` / `soloNet(...)`.
-- **Loans state** — `loans` is an array of `{name,rate,pts,credits,fees,escrow,quotedPI,slot}`.
+- **Loans state** — `loans` is an array of
+  `{name,rate,pts,credits,fees,escrow,quotedPI,quoted,goodThru,slot}`.
   `pts` (a % of loan) is canonical; the card's **Points $ box is a synced mirror** (editing
   either recomputes the other via `loanAmount(p)`; the $ mirror also refreshes on price/down
   changes, skipping whichever input has focus). `escrow` (nullable) is that lender's own
   LE Section-G escrow demand, overriding the shared `p.escrow` in cash-to-close only.
   `quotedPI` (nullable) is the sheet's quoted P&I, used purely as a transcription check
-  (✓/⚠ badge on the card, ±$1 tolerance). `slot` is the **permanent color slot** (palette
+  (✓/⚠ badge on the card, ±$1 tolerance). `quoted`/`goodThru` (nullable `YYYY-MM-DD` strings)
+  drive the card's freshness/lock badges: amber when the quote is ≥3 days old, red when
+  `goodThru` < settlement. The US Financial LE is **not rate-locked** (page 1 Rate Lock: NO) —
+  its `goodThru` is the LE's cost-expiration 7/23/26; Chase menus price a 45-day lock
+  (`goodThru` = quote date + 45). `slot` is the **permanent color slot** (palette
   index): colors follow the loan, never its row position, so deleting a loan must not repaint
   survivors (`freeSlot()` assigns the lowest unused slot to new loans). Max 6 loans (palette
   size). Defaults are the actual lender quotes in hand (US Financial/UWM LE; all five Chase
@@ -78,10 +86,14 @@ Never commit the gitignored source documents (PDFs, screenshots).
   no pairwise-crossover list), crosshair tooltip on hover **and keyboard** (arrows/Home/End on
   the hit rect), and a milestone table as the chart's table view. `metric` global:
   `cost | outlay | balance`.
-  “True cost” = interest + PMI + lender charges (principal is equity, not cost); escrows and
-  seller reimbursements are cash-to-close items but *not* true cost.
-- **Persistence & sharing** — `collectState()` = `{v:2, inputs, metric, loans}`;
-  `applyState()` restores it (sanitizing loans and deduping slots). `localStorage` key
+  “True cost” = interest + PMI + lender charges, future interest/PMI discounted at the
+  cash-yield input (principal is equity, not cost); escrows and seller reimbursements are
+  cash-to-close items but *not* true cost. The table's 10-yr column shows “+$X credit to tie”
+  on non-best loans — the extra lender credit that would match the 10-yr best (negotiation ask).
+- **Persistence & sharing** — `collectState()` = `{v:3, inputs, metric, loans}`;
+  `applyState()` restores it (sanitizing loans and deduping slots; states saved with `v<3`
+  get their income/removed-spending input overrides dropped so current defaults apply).
+  `localStorage` key
   `homecalc_v2`; share links pack the state into a base64 `#s=` hash (`loadFromURL()` applies
   non-destructively and strips the hash).
 
