@@ -98,7 +98,7 @@
 <body>
 <header>
   <h1>🏡 201 Snowberry Way — Mortgage Comparison</h1>
-  <div class="sub">Under contract at $760,000 · settlement 8/12/2026 · West Whiteland Twp, Chester County PA. Defaults reproduce the KW closing-cost estimate (v4) to the penny. Add each lender's rate sheet as a loan below and compare. Entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a> · <a href="#" onclick="return copyShare(event);">🔗 copy a share link</a>.<span id="shareMsg" class="sharemsg"></span></div>
+  <div class="sub">Under contract at $760,000 · settlement 8/12/2026 · West Whiteland Twp, Chester County PA. Shared costs (taxes, HOA, title, transfer tax, escrows) come from the KW closing-cost worksheet; the loan cards hold actual lender quotes — add each new rate sheet as a loan and compare. Entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a> · <a href="#" onclick="return copyShare(event);">🔗 copy a share link</a>.<span id="shareMsg" class="sharemsg"></span></div>
 </header>
 
 <div class="wrap">
@@ -264,7 +264,14 @@
   <div>
     <div class="panel">
       <h2>Loan scenarios</h2>
-      <div class="hint" style="margin-bottom:10px">One card per lender quote. Points are % of the loan (negative = credit priced as points); credits/fees are flat $. Prepaid interest is computed per loan from its rate.</div>
+      <div class="hint" style="margin-bottom:10px">One card per lender quote. Enter points as % <i>or</i> $ (they stay in sync; negative = credit priced into the rate). Paste the sheet's quoted P&amp;I to verify you transcribed the rate and loan right. Prepaid interest is computed per loan from its rate.</div>
+      <details style="margin:0 0 12px">
+        <summary>Where to find these numbers on a lender's sheet</summary>
+        <div class="note">
+          <b>Official Loan Estimate (3-page form):</b> <b>Rate</b> and <b>Sheet P&amp;I</b> — page 1 "Loan Terms". <b>Points $</b> — Section A, the "…% of Loan Amount (Points)" line. <b>Lender fees</b> — the rest of A (underwriting, origination) plus all of B (appraisal, credit report, MERS, flood cert, tax service, processing). <b>Credits</b> — the "Lender Credits" line. <b>Escrow</b> — Section G total (lenders demand different months; overrides the shared default for this loan only). <i>Skip sections C, E, F, H</i> — title, transfer/recording taxes, prepaids, and realtor fees are modeled once in the shared closing-costs panel so lenders compare apples-to-apples, using our own title agent's numbers. (A lender's own "cash to close" can also differ for non-pricing reasons, e.g. an earnest deposit they didn't credit.)
+          <br><br><b>Rate menus (e.g. Chase):</b> enter <b>Rate</b> and the shown P&amp;I as <b>Sheet P&amp;I</b>. Menus rarely split out points, but the <i>difference</i> in "estimated total fees" between two rows is pure rate pricing: treat the lowest-fee row as ≈0 points and enter each other row's <b>Points $</b> as its fees minus that baseline (tiny error: prepaid interest varies slightly with rate). Leave lender fees at the default unless the menu itemizes them.
+        </div>
+      </details>
       <div class="loancards" id="loanCards"></div>
       <button class="addloan" id="addLoan">＋ Add a loan</button>
     </div>
@@ -346,7 +353,14 @@ function prepaidDays(dateStr){
 }
 
 // ---------- per-loan metrics + monthly series ----------
-// p: shared params. ln: {name,rate,pts,credits,fees}
+function loanAmount(p){
+  const downAmt=p.price*p.down/100;
+  const gap=(p.appraised!=null)?Math.max(0,p.price-p.appraised):0;
+  return Math.max(0,p.price-downAmt-gap);
+}
+// p: shared params. ln: {name,rate,pts,credits,fees,escrow?,quotedPI?}
+// escrow (nullable) = this lender's own Section-G escrow demand, overriding p.escrow;
+// quotedPI (nullable) = the sheet's quoted P&I, used only as a transcription check.
 function loanCalc(p,ln){
   const downAmt=p.price*p.down/100;
   const gap=(p.appraised!=null)?Math.max(0,p.price-p.appraised):0;
@@ -359,7 +373,8 @@ function loanCalc(p,ln){
   const prepaidInt=loan*ln.rate/100/365*p.prepaidDays;
   const lenderCharges=ptsCost+ln.fees-ln.credits+prepaidInt;
   const sharedClosing=p.title+p.xfer/100*p.price+p.rec+p.misc+p.hoi1;
-  const totalCashNeeded=downAmt+gap+lenderCharges+sharedClosing+p.escrow+p.reimb;
+  const escrowAtClose=(ln.escrow!=null)?ln.escrow:p.escrow;
+  const totalCashNeeded=downAmt+gap+lenderCharges+sharedClosing+escrowAtClose+p.reimb;
   const cashToClose=totalCashNeeded-p.earnest-p.poc;
   // amortize month by month (arrays are 0..360; index m = end of month m)
   const r=ln.rate/100/12;
@@ -377,7 +392,7 @@ function loanCalc(p,ln){
   }
   const monthly=pi+pmiMo+taxMo+insMo+p.hoa;
   return {downAmt,gap,loan,ltv,pi,pmiMo,pmiEnd,taxMo,insMo,monthly,
-          ptsCost,prepaidInt,lenderCharges,sharedClosing,totalCashNeeded,cashToClose,
+          ptsCost,prepaidInt,lenderCharges,sharedClosing,escrowAtClose,totalCashNeeded,cashToClose,
           bal,cumInt,cumPmi};
 }
 
@@ -444,9 +459,20 @@ const seriesColor=slot=>getComputedStyle(document.documentElement).getPropertyVa
 const MAX_LOANS=SERIES.length;
 
 // ---------- loans state ----------
+// Defaults are the actual lender quotes in hand. (The KW closing-cost worksheet is NOT a
+// loan — it feeds the shared cost defaults only.)
+// US Financial/UWM Loan Estimate 7/9/26: points 0.879% = $5,346; fees = $1,250 underwriting
+// + $1,838 Section B; escrow = Section G $7,525.
+// Chase rate menu 7/10/26: points $ derived as each row's "estimated total fees" minus the
+// 6.625% baseline row's $15,844.30; lender fees left at the shared default (menu doesn't
+// itemize them).
 let loans=[
-  {name:'KW estimate 6.9%', rate:6.9, pts:0, credits:0, fees:750, slot:0},
-  {name:'Example: 6.5% + 1 pt', rate:6.5, pts:1, credits:0, fees:750, slot:1},
+  {name:'US Financial 6.995%', rate:6.995, pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:4043.00, slot:0},
+  {name:'Chase 6.625% ~0pt',   rate:6.625, pts:0,     credits:0, fees:750,  escrow:null, quotedPI:3893.09, slot:1},
+  {name:'Chase 6.500%',        rate:6.5,   pts:0.339, credits:0, fees:750,  escrow:null, quotedPI:3842.97, slot:2},
+  {name:'Chase 6.375%',        rate:6.375, pts:0.799, credits:0, fees:750,  escrow:null, quotedPI:3793.13, slot:3},
+  {name:'Chase 6.250%',        rate:6.25,  pts:1.307, credits:0, fees:750,  escrow:null, quotedPI:3743.56, slot:4},
+  {name:'Chase 6.125%',        rate:6.125, pts:1.668, credits:0, fees:750,  escrow:null, quotedPI:3694.27, slot:5},
 ];
 let metric='cost';
 function freeSlot(){for(let s=0;s<MAX_LOANS;s++)if(!loans.some(l=>l.slot===s))return s;return -1;}
@@ -484,15 +510,30 @@ function buildLoanCards(){
       </div>
       <div class="lgrid">
         <div class="field"><label>Rate %</label><input type="number" data-f="rate" value="${ln.rate}" step="0.125"></div>
+        <div class="field"><label>Sheet P&amp;I $</label><input type="number" data-f="quotedPI" value="${ln.quotedPI!=null?ln.quotedPI:''}" placeholder="optional check" step="0.01"></div>
         <div class="field"><label>Points %</label><input type="number" data-f="pts" value="${ln.pts}" step="0.125"></div>
+        <div class="field"><label>Points $</label><input type="number" data-f="ptsD" value="${Math.round(ln.pts/100*loanAmount(I()))}" step="1"></div>
         <div class="field"><label>Lender credits $</label><input type="number" data-f="credits" value="${ln.credits}" step="100"></div>
         <div class="field"><label>Lender fees $</label><input type="number" data-f="fees" value="${ln.fees}" step="25"></div>
+        <div class="field" style="grid-column:1/-1"><label>Escrow at closing $ (this lender's Section G)</label><input type="number" data-f="escrow" value="${ln.escrow!=null?ln.escrow:''}" placeholder="shared default" step="10"></div>
       </div>
       <div class="lout" data-out></div>`;
     card.querySelectorAll('input').forEach(inp=>{
       inp.addEventListener('input',()=>{
         const f=inp.dataset.f;
-        loans[i][f]=(f==='name')?inp.value:(+inp.value||0);
+        if(f==='name'){loans[i].name=inp.value;}
+        else if(f==='pts'){
+          loans[i].pts=+inp.value||0;
+          const d=card.querySelector('[data-f=ptsD]');
+          if(d&&document.activeElement!==d)d.value=Math.round(loans[i].pts/100*loanAmount(I()));
+        }else if(f==='ptsD'){
+          const L=loanAmount(I());
+          loans[i].pts=L>0?(+inp.value||0)/L*100:0;
+          const pc=card.querySelector('[data-f=pts]');
+          if(pc&&document.activeElement!==pc)pc.value=+loans[i].pts.toFixed(3);
+        }else if(f==='escrow'||f==='quotedPI'){
+          loans[i][f]=inp.value.trim()===''?null:(+inp.value||0);
+        }else{loans[i][f]=+inp.value||0;}
         renderOutputs(); saveState();
       });
     });
@@ -510,7 +551,7 @@ function buildLoanCards(){
 }
 $('addLoan').addEventListener('click',()=>{
   const s=freeSlot(); if(s<0) return;
-  loans.push({name:'Loan '+(loans.length+1), rate:6.5, pts:0, credits:0, fees:750, slot:s});
+  loans.push({name:'Loan '+(loans.length+1), rate:6.5, pts:0, credits:0, fees:750, escrow:null, quotedPI:null, slot:s});
   buildLoanCards(); renderOutputs(); saveState();
 });
 
@@ -548,10 +589,20 @@ function renderOutputs(){
   const th=takeHome(p);
   const lcs=loans.map(ln=>loanCalc(p,ln));
 
-  // per-card computed line
+  // per-card computed line + points-$ mirror (skip whichever input is being typed in)
   document.querySelectorAll('#loanCards .loancard').forEach((card,i)=>{
-    const lc=lcs[i], out=card.querySelector('[data-out]');
-    if(lc&&out) out.innerHTML=`P&amp;I <b>${fmt(lc.pi)}</b>/mo · points ${fmt(lc.ptsCost)} · prepaid int ${fmt(lc.prepaidInt)} · cash to close <b>${fmt(lc.cashToClose)}</b>`;
+    const ln=loans[i], lc=lcs[i], out=card.querySelector('[data-out]');
+    if(!ln||!lc||!out)return;
+    const d=card.querySelector('[data-f=ptsD]');
+    if(d&&document.activeElement!==d)d.value=Math.round(lc.ptsCost);
+    let chk='';
+    if(ln.quotedPI!=null){
+      const diff=lc.pi-ln.quotedPI;
+      chk=Math.abs(diff)<=1
+        ?` · <span style="color:var(--good)">✓ matches sheet P&amp;I</span>`
+        :` · <span style="color:var(--warn)">⚠ sheet says ${fmtC(ln.quotedPI)} (Δ ${fmt(diff)}) — check rate/loan amount</span>`;
+    }
+    out.innerHTML=`P&amp;I <b>${fmt(lc.pi)}</b>/mo · points ${fmt(lc.ptsCost)} · prepaid int ${fmt(lc.prepaidInt)} · cash to close <b>${fmt(lc.cashToClose)}</b>${chk}`;
   });
 
   renderTable(p,th,lcs);
@@ -811,7 +862,7 @@ function renderDetail(p,th,lcs){
     <tr><td>Recording + notary</td><td>${fmtC(p.rec)}</td></tr>
     <tr><td>HOA capitalization + misc</td><td>${fmtC(p.misc)}</td></tr>
     <tr><td>Homeowners ins. year 1</td><td>${fmtC(p.hoi1)}</td></tr>
-    <tr><td>Lender escrows</td><td>${fmtC(p.escrow)}</td></tr>
+    <tr><td>Lender escrows${ln.escrow!=null?' <span class="hint">(this lender’s own figure)</span>':''}</td><td>${fmtC(lc.escrowAtClose)}</td></tr>
     <tr><td>Seller reimbursements</td><td>${fmtC(p.reimb)}</td></tr>
     <tr class="total"><td>Total cash needed</td><td>${fmtC(lc.totalCashNeeded)}</td></tr>
     <tr><td>− Earnest deposit</td><td>−${fmtC(p.earnest)}</td></tr>
@@ -868,8 +919,8 @@ function renderBudget(p,th){
 
 function renderAssump(p){
   $('assump').innerHTML=`
-    <b>Purchase.</b> 201 Snowberry Way, West Whiteland Twp — under contract at ${fmt(p.price)}, settling ${esc(p.settle)}. All loans are <b>30-year fixed, conventional</b>. Closing-cost defaults come from the KW Buyer's Estimated Closing Cost report (v4, 6/22/26); at 6.9% / 20% down / 0 points they reproduce it exactly: $5,028.21/mo and $149,995.89 cash at settlement.
-    <b>Per-loan numbers.</b> Prepaid interest = loan × rate / 365 × ${p.prepaidDays} days (settlement to month-end). Lender charges = points + fees − credits + prepaid interest; enter each lender's own fee total (the $750 default is the KW estimate's appraisal $375 + credit report $25 + doc prep $200 + flood cert $25 + tax-service $125). Rate-sheet pricing already embeds LLPAs, so no separate LLPA is modeled. PMI (if &lt;20% down) runs until the balance amortizes to 78% of price.
+    <b>Purchase.</b> 201 Snowberry Way, West Whiteland Twp — under contract at ${fmt(p.price)}, settling ${esc(p.settle)}. All loans are <b>30-year fixed, conventional</b>. Shared-cost defaults (property tax, insurance, HOA, title, transfer tax, escrows, reimbursements) come from the KW Buyer's Estimated Closing Cost report (v4, 6/22/26) — the realtor's worksheet, not a lender quote. As a math cross-check, its illustrative 6.9% / 20% down / 0-point scenario is reproduced exactly: $5,028.21/mo and $149,995.89 cash at settlement.
+    <b>Per-loan numbers.</b> Prepaid interest = loan × rate / 365 × ${p.prepaidDays} days (settlement to month-end). Lender charges = points + fees − credits + prepaid interest. On an official Loan Estimate, points $ is Section A's "(Points)" line, lender fees are the rest of A plus B, and a loan's own escrow demand (Section G) can override the shared escrow default (the $750 fee default is the KW estimate's appraisal + credit report + doc prep + flood cert + tax service). Title, transfer/recording taxes, prepaids and realtor fees are shared inputs so lenders compare on identical third-party costs. Rate-sheet pricing already embeds LLPAs, so no separate LLPA is modeled. PMI (if &lt;20% down) runs until the balance amortizes to 78% of price. Chase-menu cards derive points $ from each row's "estimated total fees" minus the 6.625% baseline row.
     <b>Chart.</b> “True cost” = cumulative interest + PMI + lender charges — principal builds equity so it isn't a cost; crossover dots mark where one loan's total passes another's. “Total outlay” adds principal, taxes, insurance, HOA and all upfront cash (including earnest + POC); identical across-loan shifts, so crossovers match. Escrows/reimbursements are timing-based prepayments of taxes and insurance, counted in cash-to-close but not in true cost.
     <b>Take-home.</b> 2026 MFJ: std deduction $${STD_DED.toLocaleString()}, 401(k) $${MAX_401K.toLocaleString()}/person + HSA $${HSA_FAMILY.toLocaleString()} maxed, SS wage base $${SS_WAGE_BASE.toLocaleString()}/person, PA 3.07% + EIT ${p.eit}%. Standard deduction only (no itemized mortgage interest/SALT) — conservative.
     <br>Sources:
@@ -897,7 +948,7 @@ function collectState(){
     if(!el.id||el.id==='detailLoan')return;
     inputs[el.id]=el.value;
   });
-  return {v:2,inputs,metric,loans:loans.map(l=>({name:l.name,rate:l.rate,pts:l.pts,credits:l.credits,fees:l.fees,slot:l.slot}))};
+  return {v:2,inputs,metric,loans:loans.map(l=>({name:l.name,rate:l.rate,pts:l.pts,credits:l.credits,fees:l.fees,escrow:l.escrow,quotedPI:l.quotedPI,slot:l.slot}))};
 }
 function applyState(data){
   if(!data||!data.inputs)return;
@@ -906,6 +957,8 @@ function applyState(data){
     loans=data.loans.slice(0,MAX_LOANS).map((l,i)=>({
       name:String(l.name||('Loan '+(i+1))), rate:+l.rate||0, pts:+l.pts||0,
       credits:+l.credits||0, fees:+l.fees||0,
+      escrow:(l.escrow==null||l.escrow==='')?null:+l.escrow,
+      quotedPI:(l.quotedPI==null||l.quotedPI==='')?null:+l.quotedPI,
       slot:(typeof l.slot==='number'&&l.slot>=0&&l.slot<MAX_LOANS)?l.slot:i
     }));
     // dedupe slots

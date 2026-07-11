@@ -10,11 +10,21 @@ see git history for that version.)*
 
 ## What it does
 
-- **Loan scenarios.** One card per lender quote (up to 6): note rate, discount points (% of
-  loan, negative = credit priced as points), lender credits ($), and that lender's own fees ($).
-  Prepaid interest is computed per loan from its rate and the settlement date.
-- **Accurate closing costs.** Defaults come from the KW Buyer's Estimated Closing Cost report
-  (v4, 6/22/26) and reproduce it to the penny: at 6.9% / 20% down / 0 points the tool shows
+- **Loan scenarios.** One card per lender quote (up to 6): note rate, discount points entered
+  as **% or $** (kept in sync; negative = credit priced as points), lender credits ($), that
+  lender's own fees ($), and an optional per-lender **escrow override** (LE Section G — escrow
+  demands differ by lender). Prepaid interest is computed per loan from its rate and the
+  settlement date. An optional **"Sheet P&I"** field verifies transcription: the card shows
+  ✓ when the computed payment matches the lender's quoted P&I.
+- **Copy/paste guide.** A collapsible "Where to find these numbers on a lender's sheet" note
+  maps official Loan Estimate sections (A/B/G/J) and Chase-style rate menus onto the card
+  fields — including the trick of deriving points $ from fee differences between menu rows.
+  Sections C/E/F/H (title, government taxes, prepaids, realtor) stay shared so lenders are
+  compared on identical third-party costs.
+- **Accurate closing costs.** Shared-cost defaults (property tax, insurance, HOA, title,
+  transfer tax, escrows, seller reimbursements) come from the KW Buyer's Estimated Closing
+  Cost report (v4, 6/22/26) — the realtor's worksheet, not a lender quote. As a math
+  cross-check, its illustrative 6.9% / 20% / 0-point scenario is reproduced to the penny:
   **$5,028.21/mo** and **$149,995.89 cash at settlement** (after the $30k earnest deposit and
   $2,475 paid outside closing). Every line item is editable.
 - **Adjustable down payment.** Slider (5–50%, default 20%). Below 20% adds PMI, which
@@ -59,6 +69,10 @@ see git history for that version.)*
 | Paid outside closing | $2,475 (appraisal $375 + year-1 insurance $2,100) | KW estimate |
 | Default lender fees | $750 (appraisal + credit report + doc prep + flood cert + tax service) | KW estimate |
 | PMI (if <20% down) | 0.6%/yr until 78% LTV | assumption |
+
+Default loan cards are the actual lender quotes in hand: the US Financial/UWM Loan Estimate
+of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow) and all five rows of Chase's rate
+menu of 7/10/26 (6.625% ≈0-pt baseline down to 6.125%, points derived from menu fee deltas).
 
 No separate LLPA is modeled — real rate-sheet pricing already embeds it.
 

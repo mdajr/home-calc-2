@@ -15,11 +15,19 @@ git history if ever needed again.
 
 ## Ground truth
 
-Closing-cost defaults come from the **KW Buyer's Estimated Closing Cost report (v4, 6/22/26)**
-— a PDF kept in this directory but **gitignored (never commit it)**. The defaults reproduce it
-exactly: at 6.9% / 20% down / 0 points the tool must show **$5,028.21/mo** and **$149,995.89
-cash at settlement** ($182,470.89 total cash − $30,000 earnest − $2,475 POC). If you touch the
-closing-cost math, re-verify those figures (see Testing below).
+Shared-cost defaults (tax, insurance, HOA, title, transfer tax, escrows, reimbursements) come
+from the **KW Buyer's Estimated Closing Cost report (v4, 6/22/26)** — the *realtor's
+worksheet*, not a lender quote, so it is never a loan card. Lender quotes (US Financial/UWM
+Loan Estimate, Chase rate-menu screenshot) seed the loan cards. All of these are PDFs/images
+kept in this directory but **gitignored (never commit them)**. Math cross-check: at the KW
+worksheet's illustrative 6.9% / 20% down / 0 points, the tool must show **$5,028.21/mo** and
+**$149,995.89 cash at settlement** ($182,470.89 total cash − $30,000 earnest − $2,475 POC).
+If you touch the closing-cost math, re-verify those figures (see Testing below).
+
+## Workflow
+
+**Always commit and push to `main`** when a change is done and verified — no need to ask.
+Never commit the gitignored source documents (PDFs, screenshots).
 
 ## Running / testing
 
@@ -39,10 +47,18 @@ closing-cost math, re-verify those figures (see Testing below).
   amortization arrays `bal/cumInt/cumPmi` indexed 0..360, PMI until 78% of price, lender
   charges, cash-to-close waterfall), `costAt/outlayAt/metricAt` (chart metrics),
   `crossovers(fa,fb)`, `takeHome(p)` / `soloNet(...)`.
-- **Loans state** — `loans` is an array of `{name,rate,pts,credits,fees,slot}`. `slot` is the
-  **permanent color slot** (palette index): colors follow the loan, never its row position, so
-  deleting a loan must not repaint survivors (`freeSlot()` assigns the lowest unused slot to
-  new loans). Max 6 loans (palette size).
+- **Loans state** — `loans` is an array of `{name,rate,pts,credits,fees,escrow,quotedPI,slot}`.
+  `pts` (a % of loan) is canonical; the card's **Points $ box is a synced mirror** (editing
+  either recomputes the other via `loanAmount(p)`; the $ mirror also refreshes on price/down
+  changes, skipping whichever input has focus). `escrow` (nullable) is that lender's own
+  LE Section-G escrow demand, overriding the shared `p.escrow` in cash-to-close only.
+  `quotedPI` (nullable) is the sheet's quoted P&I, used purely as a transcription check
+  (✓/⚠ badge on the card, ±$1 tolerance). `slot` is the **permanent color slot** (palette
+  index): colors follow the loan, never its row position, so deleting a loan must not repaint
+  survivors (`freeSlot()` assigns the lowest unused slot to new loans). Max 6 loans (palette
+  size). Defaults are the actual lender quotes in hand (US Financial/UWM LE; all five Chase
+  rate-menu rows with points $ derived from menu fee deltas vs the 6.625% baseline row) — the
+  KW worksheet is not one of them.
 - **`I()`** — reads all *shared* inputs (purchase, ongoing costs, closing costs, budget) into
   `p`. Loan-card inputs are **not** in `I()`; they live in `loans`.
 - **Loan cards** — `buildLoanCards()` rebuilds the card DOM **only on structural change**
@@ -70,9 +86,11 @@ closing-cost math, re-verify those figures (see Testing below).
 - **PDF-exact defaults.** Don't "round off" the odd-looking defaults ($5,239.66 title,
   $3,456.63 escrows…) — they're real line items and the to-the-penny match is the point.
 - **Per-loan vs shared split is intentional.** Anything that varies by lender (rate, points,
-  credits, fees → prepaid interest, lender charges) is on the loan card; everything else
-  (title, transfer tax, escrows, reimbursements, tax/insurance/HOA) is shared, so loan
-  differences in the table/chart are purely lender pricing.
+  credits, fees → prepaid interest, lender charges, and optionally the Section-G escrow) is on
+  the loan card; everything else (title, transfer tax, reimbursements, tax/insurance/HOA) is
+  shared, so loan differences in the table/chart are purely lender pricing. The in-app
+  "Where to find these numbers" guide maps LE sections A/B/G/J and Chase-style rate menus onto
+  the card fields — keep it accurate if fields change.
 - **No LLPA table.** Rate sheets already embed LLPAs in their pricing; don't reintroduce it.
 - **Colors are load-bearing.** The `--s1..--s6` ordering was validated with the dataviz
   skill's palette validator against the panel surface; don't reorder or eyeball-replace hues.
