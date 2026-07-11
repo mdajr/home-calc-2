@@ -3,50 +3,52 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Chester County Home Affordability Calculator</title>
+<title>201 Snowberry Way — Mortgage Comparison</title>
 <style>
   :root{
     --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --ink:#e2e8f0; --muted:#94a3b8;
     --accent:#38bdf8; --good:#34d399; --warn:#fbbf24; --bad:#f87171; --line:#334155;
+    --grid:#2b3950; --axis:#3e4f6b;
+    /* categorical series palette — validated (dataviz six checks) against #1e293b */
+    --s1:#3987e5; --s2:#c98500; --s3:#199e70; --s4:#9085e9; --s5:#e66767; --s6:#d95926;
+    color-scheme:dark;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
        background:var(--bg);color:var(--ink);line-height:1.45}
-  header{padding:24px 20px 8px;max-width:1200px;margin:0 auto}
+  header{padding:24px 20px 8px;max-width:1280px;margin:0 auto}
   h1{font-size:1.5rem;margin:0 0 4px}
   .sub{color:var(--muted);font-size:.9rem}
   .sharemsg{color:var(--good);font-size:.82rem;margin-left:6px}
-  .wrap{max-width:1200px;margin:0 auto;padding:16px 20px 60px;display:grid;grid-template-columns:360px 1fr;gap:20px}
-  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .wrap{max-width:1280px;margin:0 auto;padding:16px 20px 60px;display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px}
+  @media(max-width:940px){.wrap{grid-template-columns:minmax(0,1fr)}}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
   .panel h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 12px}
-  .field{margin-bottom:14px}
-  .field label{display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:4px}
-  .field label b{color:var(--ink);font-weight:600}
-  input[type=number],select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  .field{margin-bottom:12px}
+  .field label{display:flex;justify-content:space-between;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-bottom:4px;gap:2px 8px}
+  .field label b{color:var(--ink);font-weight:600;text-align:right}
+  input[type=number],input[type=text],input[type=date],select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
        border-radius:8px;padding:8px 10px;font-size:.95rem}
   input[type=range]{width:100%;accent-color:var(--accent)}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .hint{font-size:.72rem;color:var(--muted);margin-top:3px}
-  .toggle{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);cursor:pointer}
-  /* results */
-  .bignum{font-size:2.2rem;font-weight:700;color:var(--good);line-height:1.1}
+  .bignum{font-size:2rem;font-weight:700;color:var(--good);line-height:1.1}
   .bignum small{font-size:.9rem;color:var(--muted);font-weight:400}
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
   .kpi{background:var(--panel2);border-radius:8px;padding:10px}
-  .kpi .v{font-size:1.15rem;font-weight:700}
+  .kpi .v{font-size:1.1rem;font-weight:700}
   .kpi .l{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .tblwrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:.85rem}
-  th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line)}
+  th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
   th:first-child,td:first-child{text-align:left}
   thead th{color:var(--accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--line)}
+  tbody td{font-variant-numeric:tabular-nums}
   tr.total td{font-weight:700;border-top:2px solid var(--line);border-bottom:none}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600}
   .pill.good{background:rgba(52,211,153,.15);color:var(--good)}
   .pill.warn{background:rgba(251,191,36,.15);color:var(--warn)}
   .pill.bad{background:rgba(248,113,113,.15);color:var(--bad)}
-  .barwrap{background:var(--panel2);border-radius:6px;height:10px;overflow:hidden;margin-top:6px}
-  .bar{height:100%;background:linear-gradient(90deg,var(--good),var(--accent))}
   .note{font-size:.78rem;color:var(--muted);background:var(--panel2);border-left:3px solid var(--accent);
         padding:10px 12px;border-radius:0 8px 8px 0;margin-top:10px}
   details{margin-top:10px}
@@ -54,236 +56,266 @@
   .flags{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:.85rem}
   .flag{display:flex;gap:8px;align-items:center}
   a{color:var(--accent)}
-  .stratrec{background:rgba(56,189,248,.08);border:1px solid var(--accent);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:.88rem}
+  button{font:inherit;cursor:pointer}
+  /* ---- loan cards ---- */
+  .loancards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .loancard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;border-top:3px solid var(--line)}
+  .loancard .lhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .loancard .lhead input[type=text]{flex:1;font-weight:600;padding:5px 8px;background:var(--panel)}
+  .loancard .lhead .chip{width:14px;height:14px;border-radius:4px;flex:none}
+  .loancard .lbtn{background:none;border:none;color:var(--muted);font-size:1rem;padding:2px 4px;border-radius:6px;line-height:1}
+  .loancard .lbtn:hover{color:var(--ink);background:var(--panel)}
+  .loancard .lgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .loancard .lgrid .field{margin-bottom:0}
+  .loancard .lgrid input{padding:5px 8px;font-size:.88rem;background:var(--panel)}
+  .loancard .lout{margin-top:8px;font-size:.75rem;color:var(--muted)}
+  .loancard .lout b{color:var(--ink)}
+  .addloan{margin-top:12px;background:var(--panel2);border:1px dashed var(--line);color:var(--accent);
+           border-radius:10px;padding:8px 14px;font-size:.85rem}
+  .addloan:hover{border-color:var(--accent)}
+  .addloan:disabled{opacity:.4;cursor:default}
+  /* ---- chart ---- */
+  .chartbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:8px}
+  .segs{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .segs button{background:var(--panel2);border:none;color:var(--muted);padding:6px 12px;font-size:.8rem}
+  .segs button+button{border-left:1px solid var(--line)}
+  .segs button.on{background:var(--panel);color:var(--ink);font-weight:600}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted)}
+  .legend .li{display:inline-flex;align-items:center;gap:6px}
+  .legend .key{width:16px;height:3px;border-radius:2px;flex:none}
+  .chartwrap{position:relative}
+  .chartwrap svg{display:block;width:100%;height:auto}
+  .charttip{position:absolute;pointer-events:none;background:#0b1424;border:1px solid var(--line);border-radius:8px;
+            padding:8px 10px;font-size:.78rem;display:none;z-index:5;min-width:170px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+  .charttip .tt{color:var(--muted);margin-bottom:4px}
+  .charttip .tr{display:flex;align-items:center;gap:7px;margin-top:2px}
+  .charttip .tr .key{width:14px;height:3px;border-radius:2px;flex:none}
+  .charttip .tr .nm{color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+  .charttip .tr .vv{font-weight:700;font-variant-numeric:tabular-nums}
+  .bes{margin-top:10px;display:flex;flex-direction:column;gap:4px;font-size:.82rem}
 </style>
 </head>
 <body>
 <header>
-  <h1>🏡 Chester County Home Affordability Calculator</h1>
-  <div class="sub">Downingtown / Exton / West Chester — WCASD &amp; DASD. Tuned for MFJ households maxing 401(k) + HSA. All figures editable; everything updates live. Your entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a> · <a href="#" onclick="return copyShare(event);">🔗 copy a share link</a> for this exact scenario.<span id="shareMsg" class="sharemsg"></span></div>
+  <h1>🏡 201 Snowberry Way — Mortgage Comparison</h1>
+  <div class="sub">Under contract at $760,000 · settlement 8/12/2026 · West Whiteland Twp, Chester County PA. Defaults reproduce the KW closing-cost estimate (v4) to the penny. Add each lender's rate sheet as a loan below and compare. Entries are saved in this browser — <a href="#" onclick="resetSaved();return false;">reset to defaults</a> · <a href="#" onclick="return copyShare(event);">🔗 copy a share link</a>.<span id="shareMsg" class="sharemsg"></span></div>
 </header>
 
 <div class="wrap">
   <!-- ============ INPUTS ============ -->
   <div>
     <div class="panel">
-      <h2>Income &amp; Cash</h2>
+      <h2>Purchase</h2>
+      <div class="field">
+        <label>Purchase price <b id="priceV"></b></label>
+        <input type="number" id="price" value="760000" step="1000">
+      </div>
+      <div class="field">
+        <label>Down payment <b id="downV"></b></label>
+        <input type="number" id="down" value="20" step="1">
+        <input type="range" id="downR" min="5" max="50" step="1" value="20">
+        <div class="hint">Below 20% adds PMI (rate set under Ongoing costs). PMI drops off automatically when the balance amortizes to 78% of the price.</div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Settlement date</label>
+          <input type="date" id="settle" value="2026-08-12">
+          <div class="hint">Sets prepaid interest: <span id="prepaidDaysV"></span> day(s) to month-end at each loan's rate.</div>
+        </div>
+        <div class="field">
+          <label>Earnest already paid <b id="earnestV"></b></label>
+          <input type="number" id="earnest" value="30000" step="1000">
+          <div class="hint">Credited against cash due at settlement.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Appraised value (optional) <b id="appraisedV"></b></label>
+        <input type="number" id="appraised" value="" placeholder="assumes ≥ price" step="1000">
+        <div class="hint">If it appraises below price, the gap is extra cash at closing and shrinks every loan dollar-for-dollar.</div>
+      </div>
+      <div class="field">
+        <label>Cash on hand <b id="cashV"></b></label>
+        <input type="number" id="cash" value="300000" step="5000">
+        <div class="hint">Used to show what's left after each loan's cash to close.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Ongoing costs</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Property tax / yr <b id="ptaxYrV"></b></label>
+          <input type="number" id="ptaxYr" value="8459" step="10">
+        </div>
+        <div class="field">
+          <label>Home insurance / yr <b id="insYrV"></b></label>
+          <input type="number" id="insYr" value="2100" step="50">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>HOA / mo <b id="hoaV"></b></label>
+          <input type="number" id="hoa" value="144" step="1">
+        </div>
+        <div class="field">
+          <label>PMI % / yr <b id="pmiV"></b></label>
+          <input type="number" id="pmi" value="0.6" step="0.05">
+        </div>
+      </div>
+      <div class="hint" style="margin-bottom:10px">Tax + insurance defaults from the KW estimate ($704.92 + $175/mo). PA doesn't reassess on sale, so the tax bill stays tied to the current assessment.</div>
+      <div class="field">
+        <label>Utilities + maintenance / mo <b id="utilMaintV"></b></label>
+        <input type="number" id="utilMaint" value="800" step="25">
+        <div class="hint">Not part of the mortgage payment — used only for the monthly-leftover budget check.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Closing costs (from KW estimate)</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Title insurance <b id="titleV"></b></label>
+          <input type="number" id="title" value="5239.66" step="10">
+          <div class="hint">Enhanced policy + $300 endorsements.</div>
+        </div>
+        <div class="field">
+          <label>Transfer tax % <b id="xferV"></b></label>
+          <input type="number" id="xfer" value="1.0" step="0.25">
+          <div class="hint">Buyer's half of PA's 2%.</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Recording + notary <b id="recV"></b></label>
+          <input type="number" id="rec" value="239" step="1">
+          <div class="hint">Deed $70 + mortgage $134 + notary $35.</div>
+        </div>
+        <div class="field">
+          <label>HOA capitalization + misc <b id="miscV"></b></label>
+          <input type="number" id="misc" value="2195" step="5">
+          <div class="hint">Capitalization funding $1,700 + KW admin $495.</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Homeowners ins. year 1 <b id="hoi1V"></b></label>
+          <input type="number" id="hoi1" value="2100" step="50">
+          <div class="hint">First-year premium, due before/at closing.</div>
+        </div>
+        <div class="field">
+          <label>Lender escrows at closing <b id="escrowV"></b></label>
+          <input type="number" id="escrow" value="3456.63" step="10">
+          <div class="hint">Escrow account funding: 9 mo county + municipal tax, 3 mo school tax, 2 mo insurance.</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Seller reimbursements <b id="reimbV"></b></label>
+          <input type="number" id="reimb" value="6591.86" step="10">
+          <div class="hint">Taxes + HOA the seller prepaid past 8/12.</div>
+        </div>
+        <div class="field">
+          <label>Already paid (POC) <b id="pocV"></b></label>
+          <input type="number" id="poc" value="2475" step="5">
+          <div class="hint">Paid outside closing: appraisal $375 + first-year insurance $2,100. Credited at settlement.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Budget context</h2>
       <div class="row2">
         <div class="field">
           <label>Person A income <b id="incomeAV"></b></label>
           <input type="number" id="incomeA" value="200000" step="5000">
-          <input type="range" id="incomeAR" min="0" max="600000" step="5000" value="200000">
         </div>
         <div class="field">
           <label>Person B income <b id="incomeBV"></b></label>
           <input type="number" id="incomeB" value="200000" step="5000">
-          <input type="range" id="incomeBR" min="0" max="600000" step="5000" value="200000">
-        </div>
-      </div>
-      <div class="hint" style="margin-top:-4px;margin-bottom:12px">Combined: <b id="incomeV"></b>. Each person with income gets their own 401(k) and Social Security wage cap — enter actual salaries for the most accurate take-home.</div>
-      <div class="field">
-        <label>Cash on hand (savings) <b id="cashV"></b></label>
-        <input type="number" id="cash" value="300000" step="5000">
-        <input type="range" id="cashR" min="50000" max="1200000" step="5000" value="300000">
-      </div>
-      <div class="field">
-        <label>Emergency fund: months of housing <b id="efMonthsV"></b></label>
-        <input type="range" id="efMonths" min="0" max="12" step="1" value="6">
-        <div class="hint">Covers this many months of full housing payment (P&amp;I, tax, insurance, PMI, HOA) + utilities for the home in question.</div>
-      </div>
-      <div class="field">
-        <label>Emergency fund: extra fixed buffer <b id="efFixedV"></b></label>
-        <input type="number" id="efFixed" value="20000" step="5000">
-        <div class="hint">Added on top of the months above. Total EF is preserved <i>after</i> down payment, closing, and points.</div>
-      </div>
-      <div class="field">
-        <label>Other monthly debt (car/student/etc.) <b id="debtV"></b></label>
-        <input type="number" id="debt" value="0" step="50">
-        <div class="hint">Counts toward back-end DTI.</div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Location (taxes)</h2>
-      <div class="field">
-        <label>Local EIT % <b id="eitV"></b></label>
-        <input type="number" id="eit" value="1.0" step="0.05">
-        <div class="hint">Local earned-income tax. Most Chester County townships are 1.0%.</div>
-      </div>
-      <div class="field">
-        <label>Property tax % of price <b id="ptaxV"></b></label>
-        <input type="number" id="ptax" value="1.25" step="0.025">
-        <input type="range" id="ptaxR" min="1" max="2" step="0.025" value="1.25">
-        <div class="hint">Effective rate on today's price (2025 millage × Chester County CLR 30.6%). Reference points: WCASD townships ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%. Bills vary by the home's 1998-base assessment — slide, or type a value below 1% / above 2% for a specific listing.</div>
-      </div>
-      <div class="field">
-        <label>Actual annual property tax $ (override) <b id="ptaxDollarV"></b></label>
-        <input type="number" id="ptaxDollar" value="" placeholder="auto from %" step="100">
-        <div class="hint">PA doesn't spot-reassess on sale, so an older home's bill stays tied to its 1998-base assessment, not your price. Paste a listing's actual annual tax (Zillow/Redfin) to override the % above — applies to the <b>explored home</b> only; the max-affordable table still uses the % rate.</div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Mortgage</h2>
-      <div class="field">
-        <label>Interest rate (base) <b id="rateV"></b></label>
-        <input type="number" id="rate" value="6.5" step="0.05">
-        <input type="range" id="rateR" min="4" max="9" step="0.05" value="6.5">
-        <div class="hint">Enter the <b>note rate</b>, not the APR. This is the rate <i>before</i> the points below. Points &amp; closing costs are modeled separately, so APR isn't needed.</div>
-      </div>
-      <div class="field">
-        <label>Discount points purchased <b id="pointsV"></b></label>
-        <input type="range" id="points" min="0" max="4" step="0.25" value="0">
-        <div class="hint">1 point = 1% of loan, paid at closing. Each point lowers the rate by the amount below.</div>
-      </div>
-      <div class="field">
-        <label>Rate drop / point <b id="buydownV"></b></label>
-        <input type="number" id="buydown" value="0.25" step="0.05">
-        <div class="hint">Loans are modeled as 30-year fixed.</div>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>PMI %/yr (if &lt;20% down) <b id="pmiV"></b></label>
-          <input type="number" id="pmi" value="0.6" step="0.05">
-        </div>
-        <div class="field">
-          <label>Closing costs % of price <b id="closeV"></b></label>
-          <input type="number" id="close" value="1.5" step="0.25">
-          <div class="hint">Title insurance + lender &amp; settlement fees (appraisal, underwriting, recording, notary) + prepaid mortgage interest. Transfer tax and property-tax prepaids are itemized separately below.</div>
         </div>
       </div>
       <div class="row2">
         <div class="field">
-          <label>Transfer tax % of price <b id="xferV"></b></label>
-          <input type="number" id="xfer" value="1.0" step="0.25">
-          <div class="hint">PA realty transfer tax is 2% total, customarily split — the buyer pays ~1%. On $760k that's ~$7,600. Set to 0 if the seller covers the buyer's half.</div>
+          <label>Local EIT % <b id="eitV"></b></label>
+          <input type="number" id="eit" value="1.0" step="0.05">
+          <div class="hint">West Whiteland Twp is 1.0%.</div>
         </div>
         <div class="field">
-          <label>Property tax prepaid at closing (months) <b id="taxProrateV"></b></label>
-          <input type="number" id="taxProrate" value="6" step="1">
-          <div class="hint">Cash for the lender's tax escrow <i>plus</i> reimbursing the seller for taxes they prepaid. Highly timing-dependent: a summer closing right after the annual school-tax bill can run 12+ months; 6 is a rough average.</div>
+          <label>Other monthly debt <b id="debtV"></b></label>
+          <input type="number" id="debt" value="0" step="50">
         </div>
       </div>
       <div class="row2">
         <div class="field">
-          <label>Buyer's agent fee % of price <b id="agentV"></b></label>
-          <input type="number" id="agent" value="3.0" step="0.25">
-          <div class="hint">Your buyer's agency commission, paid at closing. Set to 0 if the seller agrees to cover it as a concession.</div>
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>Lease notice to break (months) <b id="leaseNoticeV"></b></label>
-          <input type="number" id="leaseNotice" value="3" step="1">
+          <label>Other monthly spending <b id="spendV"></b></label>
+          <input type="number" id="spend" value="3900" step="100">
+          <div class="hint">Food, cars, insurance, everything non-housing.</div>
         </div>
         <div class="field">
-          <label>Current rent + utilities /mo <b id="leaseRentV"></b></label>
-          <input type="number" id="leaseRent" value="3900" step="100">
+          <label>Monthly cushion target <b id="cushionV"></b></label>
+          <input type="number" id="cushion" value="1500" step="100">
         </div>
       </div>
-      <div class="hint">Overlap cost: you still owe rent + utilities through the lease's notice period after closing. Counted as cash needed at purchase. Set notice to 0 if there's no overlap.</div>
-    </div>
-
-    <div class="panel">
-      <h2>Carrying costs</h2>
-      <div class="row2">
-        <div class="field">
-          <label>Home insurance %/yr <b id="insV"></b></label>
-          <input type="number" id="ins" value="0.30" step="0.05">
-        </div>
-        <div class="field">
-          <label>Maintenance %/yr <b id="maintV"></b></label>
-          <input type="number" id="maint" value="1.0" step="0.1">
-        </div>
-      </div>
-      <div class="field">
-        <label>Monthly HOA <b id="hoaV"></b></label>
-        <input type="number" id="hoa" value="0" step="25">
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>Home size (sqft) <b id="sqftV"></b></label>
-          <input type="number" id="sqft" value="3500" step="100">
-        </div>
-        <div class="field">
-          <label>Monthly utilities <b id="utilV"></b></label>
-          <input type="number" id="util" value="" placeholder="auto">
-        </div>
-      </div>
-      <div class="hint">Leave utilities blank to auto-estimate ($250 base + $0.16/sqft → ~$700/mo at 2,800 sqft).</div>
-    </div>
-
-    <div class="panel">
-      <h2>Monthly living expenses</h2>
-      <div class="hint" style="margin-bottom:10px">Mandatory spending <i>outside</i> of mortgage &amp; utilities. The max-affordable solver sets your housing budget = take-home − these − debt − cushion. Total mandatory: <b id="expensesTotalV"></b>/mo.</div>
-      <div class="row2">
-        <div class="field"><label>Food / groceries <b id="exFoodV"></b></label><input type="number" id="exFood" value="1500" step="50"></div>
-        <div class="field"><label>Childcare / daycare <b id="exCareV"></b></label><input type="number" id="exCare" value="0" step="100"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Cars / transport <b id="exCarV"></b></label><input type="number" id="exCar" value="800" step="50"></div>
-        <div class="field"><label>Insurance (health/life/auto) <b id="exMiscV"></b></label><input type="number" id="exMisc" value="600" step="50"></div>
-      </div>
-      <div class="field"><label>Everything else <b id="exOtherV"></b></label><input type="number" id="exOther" value="1000" step="100">
-        <div class="hint">Subscriptions, kids' activities, travel, gifts, pets, etc. (Car/student loan <i>payments</i> go in "Other monthly debt" above.)</div></div>
-      <div class="field"><label>Monthly cushion to keep <b id="cushionV"></b></label><input type="number" id="cushion" value="1500" step="100">
-        <div class="hint">Minimum left over each month after housing + expenses — savings/discretionary breathing room. This is what makes a budget "comfortable."</div></div>
-      <div class="hint">Utilities &amp; maintenance are also living expenses, but they scale with the home — set them in <b>Carrying costs</b> and they're added on top of the totals here automatically.</div>
+      <div class="hint">Take-home assumes 2026 MFJ, both maxing 401(k) + HSA, standard deduction — conservative.</div>
     </div>
   </div>
 
   <!-- ============ RESULTS ============ -->
   <div>
     <div class="panel">
+      <h2>Loan scenarios</h2>
+      <div class="hint" style="margin-bottom:10px">One card per lender quote. Points are % of the loan (negative = credit priced as points); credits/fees are flat $. Prepaid interest is computed per loan from its rate.</div>
+      <div class="loancards" id="loanCards"></div>
+      <button class="addloan" id="addLoan">＋ Add a loan</button>
+    </div>
+
+    <div class="panel">
+      <h2>Side by side</h2>
+      <div class="tblwrap"><table id="cmpTable">
+        <thead><tr>
+          <th>Loan</th><th>Rate</th><th>P&amp;I</th><th>PMI/mo</th><th>Monthly<br>(PITI+HOA)</th>
+          <th>% of<br>take-home</th><th>Leftover<br>/mo</th><th>Lender<br>charges</th><th>Cash to<br>close</th>
+          <th>Cash left<br>after close</th><th>5-yr<br>cost</th><th>10-yr<br>cost</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="hint" style="margin-top:6px">Lender charges = points + fees − credits + prepaid interest. “Cost” = interest + PMI + lender charges (principal is equity, not cost). Cash to close is net of earnest + POC already paid. Leftover = take-home − payment − utilities/maintenance − spending − debt.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Cost over time</h2>
+      <div class="chartbar">
+        <div class="segs" id="metricSegs" role="tablist">
+          <button data-m="cost" class="on">True cost</button>
+          <button data-m="outlay">Total outlay</button>
+          <button data-m="balance">Remaining balance</button>
+        </div>
+        <div class="legend" id="chartLegend"></div>
+      </div>
+      <div class="chartwrap" id="chartWrap">
+        <svg id="chart" viewBox="0 0 960 430" preserveAspectRatio="xMidYMid meet" aria-label="Loan cost comparison over 30 years"></svg>
+        <div class="charttip" id="chartTip"></div>
+      </div>
+      <div class="bes" id="breakevens"></div>
+      <details><summary>Milestone table (chart values by year)</summary><div class="tblwrap" id="milestones"></div></details>
+    </div>
+
+    <div class="panel">
+      <h2>Loan detail</h2>
+      <div class="field" style="max-width:340px">
+        <select id="detailLoan"></select>
+      </div>
+      <div class="row2" style="align-items:start">
+        <div class="tblwrap" id="detMonthly"></div>
+        <div class="tblwrap" id="detCash"></div>
+      </div>
+      <div class="flags" id="detFlags"></div>
+    </div>
+
+    <div class="panel">
       <h2>Take-home pay (2026)</h2>
       <div id="netSummary"></div>
       <details><summary>Show full tax breakdown</summary><div id="taxBreak"></div></details>
-      <div class="note" id="netNote"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Maximum affordable home — by strategy</h2>
-      <table id="stratTable">
-        <thead><tr>
-          <th>Strategy</th><th>Max price</th><th>Down</th><th>Loan</th>
-          <th>Housing/mo</th><th>+util&amp;maint</th><th>% net (housing)</th><th>Limited by</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="stratrec" id="rec"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Explore a specific home</h2>
-      <div class="row2">
-        <div class="field">
-          <label>Home price <b id="expPriceV"></b></label>
-          <input type="range" id="expPrice" min="400000" max="2000000" step="1000" value="1000000">
-        </div>
-        <div class="field">
-          <label>Down payment <b id="expDownV"></b></label>
-          <input type="range" id="expDown" min="5" max="100" step="1" value="20">
-          <div class="hint">Below 20% adds PMI (shown below) but frees up cash — handy if you'd rather keep it for renovations.</div>
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>Appraised value (optional) <b id="appraisedV"></b></label>
-          <input type="number" id="appraised" value="" placeholder="assumes ≥ price" step="1000">
-          <div class="hint">If the home appraises <i>below</i> your price, the lender only finances against the appraised value — you cover the difference (the "appraisal gap") in cash at closing. Leave blank if it appraises at or above your offer.</div>
-        </div>
-      </div>
-      <div class="bignum" id="expHead"></div>
-      <div class="kpis" id="expKpis"></div>
-      <div style="margin-top:6px"><span class="hint" id="expBarLabel">Spent vs take-home pay</span><div class="barwrap"><div class="bar" id="expBar"></div></div></div>
-      <div class="flags" id="expFlags"></div>
-      <details open><summary>Monthly payment breakdown</summary><div id="expMonthly"></div></details>
-      <details><summary>Cash-to-close breakdown</summary><div id="expCash"></div></details>
-    </div>
-
-    <div class="panel">
-      <h2>Should you buy down the rate?</h2>
-      <div id="pointsAnalysis"></div>
     </div>
 
     <div class="panel">
@@ -294,520 +326,636 @@
 </div>
 
 <script>
-// ---------- constants (2026) ----------
+// ==================== CALC CORE (pure — no DOM) ====================
+// ---------- constants (2026 tax year, MFJ) ----------
 const STD_DED=32200, SS_WAGE_BASE=184500, SS_RATE=0.062, MED_RATE=0.0145, MED_SURTAX=0.009, MED_SURTAX_THR=250000;
 const PA_RATE=0.0307, MAX_401K=24500, HSA_FAMILY=8750;
 const FED=[[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]];
+const TERM_MONTHS=360; // all loans 30-year fixed
 
-// ---------- helpers ----------
-const $=id=>document.getElementById(id);
-const fmt=n=>'$'+Math.round(n).toLocaleString();
-const fmt0=n=>'$'+Math.round(n).toLocaleString();
-const pct=n=>(n).toFixed(1)+'%';
 function fedTax(ti){let t=0;for(let i=0;i<FED.length;i++){const lo=FED[i][0],hi=i<FED.length-1?FED[i+1][0]:Infinity,r=FED[i][1];if(ti>lo)t+=(Math.min(ti,hi)-lo)*r;}return t;}
-function pmt(L,annual,years){if(L<=0)return 0;const r=annual/100/12,n=years*12;if(r===0)return L/n;return L*r/(1-Math.pow(1+r,-n));}
-// Fannie Mae LLPA matrix (one-time fee at closing, % of loan), 780+ credit tier, 30-yr fixed,
-// purchase money. Keyed by LTV (= 1 − down fraction). Effective 2026-01-28. Source: Fannie Mae
-// LLPA Matrix. <20% down also carries PMI (handled separately in scenario()).
-function llpaPct(ltv){
-  const l=ltv*100;
-  if(l<=75.00) return 0.000;             // ≥25% down
-  if(l<=80.00) return 0.375;             // 20% down
-  if(l<=85.00) return 0.375;             // 15% down
-  if(l<=90.00) return 0.250;             // 10% down
-  return 0.250;                          // 90.01–95% (5% down)
+function pmt(L,annualPct,months){if(L<=0)return 0;const r=annualPct/100/12;if(r===0)return L/months;return L*r/(1-Math.pow(1+r,-months));}
+
+// days of prepaid interest: settlement day through end of that month, inclusive
+function prepaidDays(dateStr){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr||'');
+  if(!m) return 0;
+  const y=+m[1],mo=+m[2],d=+m[3];
+  const dim=new Date(y,mo,0).getDate(); // days in that month
+  return Math.max(0,dim-d+1);
 }
 
-// ---------- read inputs ----------
-function I(){
-  const eA=+$('incomeA').value, eB=+$('incomeB').value, income=eA+eB;
-  const earners=(eA>0?1:0)+(eB>0?1:0);
-  const sqft=+$('sqft').value;
-  const utilManual=$('util').value.trim();
-  const util=utilManual===''?(250+0.16*sqft):+utilManual;
-  return {
-    income, eA, eB, earners,
-    cash:+$('cash').value, efMonths:+$('efMonths').value, efFixed:+$('efFixed').value, debt:+$('debt').value,
-    eit:+$('eit').value, ptax:+$('ptax').value, ptaxDollar:($('ptaxDollar').value.trim()===''?null:+$('ptaxDollar').value),
-    appraised:($('appraised').value.trim()===''?null:+$('appraised').value),
-    rate:+$('rate').value, points:+$('points').value, buydown:+$('buydown').value,
-    pmi:+$('pmi').value, close:+$('close').value, agent:+$('agent').value,
-    xfer:+$('xfer').value, taxProrate:+$('taxProrate').value,
-    leaseNotice:+$('leaseNotice').value, leaseRent:+$('leaseRent').value,
-    ins:+$('ins').value, maint:+$('maint').value, hoa:+$('hoa').value, sqft, util,
-    expenses:(+$('exFood').value)+(+$('exCare').value)+(+$('exCar').value)+(+$('exMisc').value)+(+$('exOther').value),
-    cushion:+$('cushion').value
-  };
+// ---------- per-loan metrics + monthly series ----------
+// p: shared params. ln: {name,rate,pts,credits,fees}
+function loanCalc(p,ln){
+  const downAmt=p.price*p.down/100;
+  const gap=(p.appraised!=null)?Math.max(0,p.price-p.appraised):0;
+  const loan=Math.max(0,p.price-downAmt-gap);
+  const ltv=p.price>0?loan/p.price:0;
+  const pi=pmt(loan,ln.rate,TERM_MONTHS);
+  const pmiMo=(ltv>0.80)?p.pmi/100*loan/12:0;
+  const taxMo=p.ptaxYr/12, insMo=p.insYr/12;
+  const ptsCost=ln.pts/100*loan;
+  const prepaidInt=loan*ln.rate/100/365*p.prepaidDays;
+  const lenderCharges=ptsCost+ln.fees-ln.credits+prepaidInt;
+  const sharedClosing=p.title+p.xfer/100*p.price+p.rec+p.misc+p.hoi1;
+  const totalCashNeeded=downAmt+gap+lenderCharges+sharedClosing+p.escrow+p.reimb;
+  const cashToClose=totalCashNeeded-p.earnest-p.poc;
+  // amortize month by month (arrays are 0..360; index m = end of month m)
+  const r=ln.rate/100/12;
+  const bal=new Float64Array(TERM_MONTHS+1), cumInt=new Float64Array(TERM_MONTHS+1), cumPmi=new Float64Array(TERM_MONTHS+1);
+  bal[0]=loan;
+  const pmiCut=0.78*p.price; // PMI auto-terminates at 78% of original value
+  let pmiEnd=0;
+  for(let m=1;m<=TERM_MONTHS;m++){
+    const int_=bal[m-1]*r;
+    cumInt[m]=cumInt[m-1]+int_;
+    bal[m]=Math.max(0,bal[m-1]+int_-pi);
+    const payPmi=pmiMo>0&&bal[m-1]>pmiCut;
+    cumPmi[m]=cumPmi[m-1]+(payPmi?pmiMo:0);
+    if(payPmi)pmiEnd=m;
+  }
+  const monthly=pi+pmiMo+taxMo+insMo+p.hoa;
+  return {downAmt,gap,loan,ltv,pi,pmiMo,pmiEnd,taxMo,insMo,monthly,
+          ptsCost,prepaidInt,lenderCharges,sharedClosing,totalCashNeeded,cashToClose,
+          bal,cumInt,cumPmi};
 }
 
-// ---------- solo survivor take-home (one income, MFJ) ----------
-// contribute=false models "pull all strings": halt 401(k)+HSA to free cash
-// (which also raises taxes, since those were pre-tax). Returns annual net.
+// chart metrics at month m
+function costAt(lc,m){ return lc.cumInt[m]+lc.cumPmi[m]+lc.lenderCharges; }           // interest + PMI + points/fees/prepaid − credits
+function outlayAt(p,lc,m){ return lc.cashToClose+p.earnest+p.poc+m*(lc.pi+lc.taxMo+lc.insMo+p.hoa)+lc.cumPmi[m]; }
+function metricAt(metric,p,lc,m){
+  return metric==='balance'?lc.bal[m]:metric==='outlay'?outlayAt(p,lc,m):costAt(lc,m);
+}
+
+// first month (>0) where series a−b changes sign; [] if none
+function crossovers(fa,fb){
+  const out=[];
+  let prev=fa(0)-fb(0);
+  for(let m=1;m<=TERM_MONTHS;m++){
+    const d=fa(m)-fb(m);
+    if((prev<0&&d>=0)||(prev>0&&d<=0)) out.push(m);
+    prev=d;
+  }
+  return out;
+}
+
+// ---------- take-home (2026 MFJ, both maxing 401k+HSA) ----------
 function soloNet(p,e,contribute){
   if(e<=0) return 0;
   const c401=contribute?MAX_401K:0, hsa=contribute?HSA_FAMILY:0;
   const fed=fedTax(Math.max(0,e-c401-hsa-STD_DED));
-  const w=Math.max(0,e-hsa);                 // FICA & PA/EIT base (HSA out, 401k in)
+  const w=Math.max(0,e-hsa);
   const ss=SS_RATE*Math.min(w,SS_WAGE_BASE);
   const med=MED_RATE*w+MED_SURTAX*Math.max(0,w-MED_SURTAX_THR);
   return e - c401 - hsa - fed - ss - med - PA_RATE*w - p.eit/100*w;
 }
-
-// ---------- take-home ----------
 function takeHome(p){
-  const c401 = MAX_401K*p.earners;
-  const hsa = HSA_FAMILY;
-  // Federal: 401k + HSA pre-tax, standard deduction
-  const fedTI = Math.max(0, p.income - c401 - hsa - STD_DED);
-  const fed = fedTax(fedTI);
-  // FICA per earner. HSA (cafeteria) reduces FICA wages; 401k does NOT.
-  const hsaA = hsa*(p.eA/(p.income||1)), hsaB = hsa*(p.eB/(p.income||1));
-  const ss = SS_RATE*(Math.min(Math.max(0,p.eA-hsaA),SS_WAGE_BASE)+Math.min(Math.max(0,p.eB-hsaB),SS_WAGE_BASE));
-  const medWages = Math.max(0,p.income-hsa);
-  const med = MED_RATE*medWages + MED_SURTAX*Math.max(0,medWages-MED_SURTAX_THR);
-  // PA + local EIT: HSA excluded, 401k taxed
-  const paBase = Math.max(0,p.income-hsa);
-  const pa = PA_RATE*paBase;
-  const eit = p.eit/100*paBase;
-  const totalTax = fed+ss+med+pa+eit;
-  const net = p.income - totalTax - c401 - hsa; // spendable
-  // ----- per-person allocation (FICA/PA/EIT are naturally per-person;
-  // joint federal income tax is split by each person's after-pretax income) -----
-  const wA=Math.max(0,p.eA-hsaA), wB=Math.max(0,p.eB-hsaB), wTot=(wA+wB)||1;
-  const c401A=p.eA>0?MAX_401K:0, c401B=p.eB>0?MAX_401K:0;
-  const ssA=SS_RATE*Math.min(wA,SS_WAGE_BASE), ssB=SS_RATE*Math.min(wB,SS_WAGE_BASE);
-  const medA=med*wA/wTot, medB=med*wB/wTot;
-  const fbA=Math.max(0,p.eA-c401A-hsaA), fbB=Math.max(0,p.eB-c401B-hsaB), fbTot=(fbA+fbB)||1;
-  const fedA=fed*fbA/fbTot, fedB=fed*fbB/fbTot;
-  const netA=p.eA-c401A-hsaA-ssA-medA-fedA-PA_RATE*wA-p.eit/100*wA;
-  const netB=p.eB-c401B-hsaB-ssB-medB-fedB-PA_RATE*wB-p.eit/100*wB;
-  const perA={gross:p.eA,net:netA,netMo:netA/12,soloMo:soloNet(p,p.eA,false)/12};
-  const perB={gross:p.eB,net:netB,netMo:netB/12,soloMo:soloNet(p,p.eB,false)/12};
-  return {c401,hsa,fed,ss,med,pa,eit,totalTax,net,fedTI,grossMo:p.income/12,netMo:net/12,perA,perB};
+  const income=p.eA+p.eB, earners=(p.eA>0?1:0)+(p.eB>0?1:0);
+  const c401=MAX_401K*earners, hsa=HSA_FAMILY;
+  const fedTI=Math.max(0,income-c401-hsa-STD_DED);
+  const fed=fedTax(fedTI);
+  const hsaA=hsa*(p.eA/(income||1)), hsaB=hsa*(p.eB/(income||1));
+  const ss=SS_RATE*(Math.min(Math.max(0,p.eA-hsaA),SS_WAGE_BASE)+Math.min(Math.max(0,p.eB-hsaB),SS_WAGE_BASE));
+  const medWages=Math.max(0,income-hsa);
+  const med=MED_RATE*medWages+MED_SURTAX*Math.max(0,medWages-MED_SURTAX_THR);
+  const paBase=Math.max(0,income-hsa);
+  const pa=PA_RATE*paBase, eit=p.eit/100*paBase;
+  const totalTax=fed+ss+med+pa+eit;
+  const net=income-totalTax-c401-hsa;
+  const perA={gross:p.eA,netMo:0,soloMo:soloNet(p,p.eA,false)/12};
+  const perB={gross:p.eB,netMo:0,soloMo:soloNet(p,p.eB,false)/12};
+  return {income,c401,hsa,fed,ss,med,pa,eit,totalTax,net,fedTI,grossMo:income/12,netMo:net/12,perA,perB};
+}
+// ==================== END CALC CORE ====================
+
+// ---------- helpers ----------
+const $=id=>document.getElementById(id);
+const fmt=n=>(n<0?'−$':'$')+Math.round(Math.abs(n)).toLocaleString();
+const fmtC=n=>(n<0?'−$':'$')+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtK=n=>{const a=Math.abs(n),s=n<0?'−$':'$';
+  if(a>=1e6)return s+(a/1e6).toFixed(a<10e6?2:1)+'M';
+  if(a>=1e3)return s+Math.round(a/1e3)+'k';
+  return s+Math.round(a);};
+const pct=n=>n.toFixed(1)+'%';
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const SERIES=['--s1','--s2','--s3','--s4','--s5','--s6'];
+const seriesColor=slot=>getComputedStyle(document.documentElement).getPropertyValue(SERIES[slot]).trim();
+const MAX_LOANS=SERIES.length;
+
+// ---------- loans state ----------
+let loans=[
+  {name:'KW estimate 6.9%', rate:6.9, pts:0, credits:0, fees:750, slot:0},
+  {name:'Example: 6.5% + 1 pt', rate:6.5, pts:1, credits:0, fees:750, slot:1},
+];
+let metric='cost';
+function freeSlot(){for(let s=0;s<MAX_LOANS;s++)if(!loans.some(l=>l.slot===s))return s;return -1;}
+
+// ---------- read shared inputs ----------
+function I(){
+  const num=id=>+$(id).value||0;
+  return {
+    price:num('price'), down:num('down'),
+    settle:$('settle').value, prepaidDays:prepaidDays($('settle').value),
+    earnest:num('earnest'),
+    appraised:($('appraised').value.trim()===''?null:+$('appraised').value),
+    cash:num('cash'),
+    ptaxYr:num('ptaxYr'), insYr:num('insYr'), hoa:num('hoa'), pmi:num('pmi'), utilMaint:num('utilMaint'),
+    title:num('title'), xfer:num('xfer'), rec:num('rec'), misc:num('misc'),
+    hoi1:num('hoi1'), escrow:num('escrow'), reimb:num('reimb'), poc:num('poc'),
+    eA:num('incomeA'), eB:num('incomeB'), eit:num('eit'),
+    debt:num('debt'), spend:num('spend'), cushion:num('cushion')
+  };
 }
 
-// ---------- monthly housing for a given price & down% ----------
-function scenario(p,price,downFrac){
-  const down=price*downFrac;
-  const apprGap=p.apprGap||0;          // cash to bridge a low appraisal (explored home only)
-  const loan=Math.max(0,price-down-apprGap); // lender finances against appraised value; gap cash shrinks the loan
-  const ltv=price>0?loan/price:0;
-  const eff=Math.max(0.5, p.rate - p.points*p.buydown); // effective rate after points
-  const pi=pmt(loan,eff,30);                             // 30-year fixed
-  const pmi=(ltv>0.80)? p.pmi/100*loan/12 : 0;
-  const tax=p.ptax/100*price/12;
-  const ins=p.ins/100*price/12;
-  const maint=p.maint/100*price/12;
-  const util=p.util, hoa=p.hoa;
-  const pointsCost=p.points/100*loan;
-  const closing=p.close/100*price;
-  const xferTax=p.xfer/100*price;      // PA realty transfer tax (buyer's customary half), one-time at closing
-  const taxProrate=(p.taxProrate||0)*tax; // tax escrow funding + seller reimbursement, in months of property tax
-  const agentFee=p.agent/100*price;    // buyer's agency commission, paid at closing
-  const llpaRate=llpaPct(ltv);         // Fannie Mae loan-level price adjustment (780+ tier)
-  const llpaCost=llpaRate/100*loan;    // one-time, % of loan, due at closing
-  const core=pi+pmi+tax+ins+hoa;       // HOUSING: mortgage payment only
-  const homeLiving=maint+util;          // home-driven LIVING expenses (counted with food/etc.)
-  const totalMonthly=core+homeLiving;   // all home-related monthly outflow
-  // lease overlap: during the notice period you double-pay the old rent+utils, but your
-  // paychecks keep coming — only the rent your monthly surplus can't absorb hits savings.
-  const surplus=Math.max(0,(p.netMo||0)-totalMonthly-p.expenses-p.debt); // income free for overlap rent
-  const leaseDrainMo=Math.max(0,p.leaseRent-surplus); // savings drawn per overlap month
-  const leaseCarryover=p.leaseNotice*leaseDrainMo;
-  const cashToClose=down+apprGap+closing+xferTax+taxProrate+pointsCost+agentFee+llpaCost+leaseCarryover;
-  return {down,apprGap,loan,ltv,eff,pi,pmi,tax,ins,maint,util,hoa,pointsCost,closing,xferTax,taxProrate,agentFee,llpaRate,llpaCost,leaseCarryover,leaseDrainMo,surplus,cashToClose,core,homeLiving,totalMonthly};
+// ---------- loan cards (built on structural change only, so typing keeps focus) ----------
+function buildLoanCards(){
+  const host=$('loanCards'); host.innerHTML='';
+  loans.forEach((ln,i)=>{
+    const card=document.createElement('div');
+    card.className='loancard';
+    card.style.borderTopColor=seriesColor(ln.slot);
+    card.innerHTML=`
+      <div class="lhead">
+        <span class="chip" style="background:${seriesColor(ln.slot)}"></span>
+        <input type="text" data-f="name" value="${esc(ln.name)}" aria-label="Loan name">
+        <button class="lbtn" data-act="dup" title="Duplicate">⧉</button>
+        <button class="lbtn" data-act="del" title="Remove">✕</button>
+      </div>
+      <div class="lgrid">
+        <div class="field"><label>Rate %</label><input type="number" data-f="rate" value="${ln.rate}" step="0.125"></div>
+        <div class="field"><label>Points %</label><input type="number" data-f="pts" value="${ln.pts}" step="0.125"></div>
+        <div class="field"><label>Lender credits $</label><input type="number" data-f="credits" value="${ln.credits}" step="100"></div>
+        <div class="field"><label>Lender fees $</label><input type="number" data-f="fees" value="${ln.fees}" step="25"></div>
+      </div>
+      <div class="lout" data-out></div>`;
+    card.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input',()=>{
+        const f=inp.dataset.f;
+        loans[i][f]=(f==='name')?inp.value:(+inp.value||0);
+        renderOutputs(); saveState();
+      });
+    });
+    card.querySelector('[data-act=del]').addEventListener('click',()=>{
+      loans.splice(i,1); buildLoanCards(); renderOutputs(); saveState();
+    });
+    card.querySelector('[data-act=dup]').addEventListener('click',()=>{
+      const s=freeSlot(); if(s<0) return;
+      loans.splice(i+1,0,Object.assign({},ln,{name:ln.name+' (copy)',slot:s}));
+      buildLoanCards(); renderOutputs(); saveState();
+    });
+    host.appendChild(card);
+  });
+  $('addLoan').disabled=loans.length>=MAX_LOANS;
 }
-
-// ---------- emergency fund: X months of housing+utilities + fixed buffer ----------
-function efFor(p,s){ return p.efMonths*(s.pi+s.pmi+s.tax+s.ins+s.hoa+s.util) + p.efFixed; }
-
-// ---------- max price for a fixed down fraction ----------
-// EF depends on the monthly payment (which depends on price), so both the
-// monthly-comfort and cash constraints are solved jointly via binary search.
-function maxForDownFrac(p,th,downFrac){
-  const ceiling=Math.max(0, th.netMo - p.expenses - p.debt - p.cushion); // housing budget
-  function feasible(price){
-    const s=scenario(p,price,downFrac);
-    if(s.totalMonthly>ceiling) return false;
-    return s.cashToClose <= (p.cash - efFor(p,s));
-  }
-  let lo=0,hi=8000000;
-  for(let i=0;i<60;i++){const mid=(lo+hi)/2;feasible(mid)?lo=mid:hi=mid;}
-  const price=lo;
-  const s=scenario(p,price,downFrac);
-  const ef=efFor(p,s), cashAvail=p.cash-ef;
-  const cRatio=ceiling>0?s.totalMonthly/ceiling:Infinity;
-  const kRatio=cashAvail>0?s.cashToClose/cashAvail:Infinity;
-  const binding = cRatio>=kRatio ? 'monthly budget' : 'cash on hand';
-  return {price,binding,s,ef};
-}
-
-// ---------- all-cash-down: put every available dollar down ----------
-function maxAllCash(p,th){
-  const ceiling=Math.max(0, th.netMo - p.expenses - p.debt - p.cushion); // housing budget
-  // For a given price, the max down and the EF are mutually dependent
-  // (more down -> smaller P&I -> smaller EF -> more cash for down). Iterate.
-  function solveDown(price){
-    let down=price*0.2;
-    for(let it=0;it<14;it++){
-      const s=scenario(p,price,price>0?down/price:0);
-      const avail=p.cash-efFor(p,s);
-      const closing=p.close/100*price;
-      const xferTax=p.xfer/100*price;
-      const taxProrate=s.taxProrate;         // price-proportional tax prepaids from scenario()
-      const agentFee=p.agent/100*price;
-      const leaseCarryover=s.leaseCarryover; // income-netted overlap from scenario()
-      const llpaCost=s.llpaCost;             // LLPA from scenario() at the current LTV
-      let nd=(avail-closing-xferTax-taxProrate-agentFee-leaseCarryover-llpaCost-p.points/100*price)/(1-p.points/100);
-      if(nd<0) return null;          // can't cover fixed closing costs+taxes+agent fee+LLPA+lease overlap+points even at 0 down
-      if(nd>price) nd=price;         // all cash, no loan
-      down=nd;
-    }
-    return down;
-  }
-  function feasible(price){
-    const down=solveDown(price);
-    if(down===null) return false;
-    if(price>0 && down/price < 0.20) return false; // enforce 20% minimum (no PMI)
-    const s=scenario(p,price,price>0?down/price:0);
-    return s.totalMonthly<=ceiling;
-  }
-  let lo=0,hi=8000000;
-  for(let i=0;i<60;i++){const mid=(lo+hi)/2;feasible(mid)?lo=mid:hi=mid;}
-  const price=lo;
-  const down=solveDown(price)||0;
-  const downFrac=price>0?down/price:0;
-  const s=scenario(p,price,downFrac);
-  const binding = (downFrac>=0.999)?'cash (all cash, no loan)':'monthly budget';
-  return {price,binding,s,downFrac,ef:efFor(p,s)};
-}
-
-// ---------- optimizer: best down fraction ----------
-function optimize(p,th){
-  let best=null;
-  for(let dp=20;dp<=100;dp++){ // 20% minimum down (no PMI)
-    const r=maxForDownFrac(p,th,dp/100);
-    if(!best||r.price>best.price){best=r;best.downFrac=dp/100;}
-  }
-  return best;
-}
+$('addLoan').addEventListener('click',()=>{
+  const s=freeSlot(); if(s<0) return;
+  loans.push({name:'Loan '+(loans.length+1), rate:6.5, pts:0, credits:0, fees:750, slot:s});
+  buildLoanCards(); renderOutputs(); saveState();
+});
 
 // ---------- render ----------
-function render(){
+function render(){ renderLabels(); renderOutputs(); }
+
+function renderLabels(){
   const p=I();
-  // labels
-  $('incomeAV').textContent=fmt(p.eA); $('incomeBV').textContent=fmt(p.eB);
-  $('incomeV').textContent=fmt(p.income); $('cashV').textContent=fmt(p.cash);
-  $('efMonthsV').textContent=p.efMonths+' mo'; $('efFixedV').textContent=fmt(p.efFixed);
-  $('debtV').textContent=fmt(p.debt)+'/mo';
-  $('eitV').textContent=p.eit+'%'; $('ptaxV').textContent=p.ptax+'%';
-  $('ptaxDollarV').textContent=p.ptaxDollar!=null?fmt(p.ptaxDollar)+'/yr (overrides %)':'off';
+  $('priceV').textContent=fmt(p.price);
+  $('downV').textContent=p.down+'% ('+fmt(p.price*p.down/100)+')';
+  $('prepaidDaysV').textContent=p.prepaidDays;
+  $('earnestV').textContent=fmt(p.earnest);
   $('appraisedV').textContent=p.appraised!=null?fmt(p.appraised):'≥ price';
-  $('rateV').textContent=p.rate+'%'; $('pointsV').textContent=p.points+' pts';
-  $('buydownV').textContent=p.buydown+'%';
-  $('pmiV').textContent=p.pmi+'%'; $('closeV').textContent=p.close+'%'; $('agentV').textContent=p.agent+'%';
-  $('xferV').textContent=p.xfer+'%'; $('taxProrateV').textContent=p.taxProrate+' mo';
-  $('leaseNoticeV').textContent=p.leaseNotice+' mo'; $('leaseRentV').textContent=fmt(p.leaseRent)+'/mo';
-  $('insV').textContent=p.ins+'%'; $('maintV').textContent=p.maint+'%'; $('hoaV').textContent=fmt(p.hoa)+'/mo';
-  $('sqftV').textContent=p.sqft.toLocaleString(); $('utilV').textContent=fmt(p.util)+'/mo';
-  ['exFood','exCare','exCar','exMisc','exOther'].forEach(id=>{const e=$(id+'V'); if(e) e.textContent=fmt(+$(id).value);});
-  $('cushionV').textContent=fmt(p.cushion); $('expensesTotalV').textContent=fmt(p.expenses);
-  // keep number<->range pairs in sync done via listeners
+  $('cashV').textContent=fmt(p.cash);
+  $('ptaxYrV').textContent=fmt(p.ptaxYr)+' ('+(p.price>0?(p.ptaxYr/p.price*100).toFixed(2):'0')+'% · '+fmt(p.ptaxYr/12)+'/mo)';
+  $('insYrV').textContent=fmt(p.insYr)+' ('+fmt(p.insYr/12)+'/mo)';
+  $('hoaV').textContent=fmt(p.hoa);
+  $('pmiV').textContent=p.pmi+'%'+(p.down>=20?' (n/a ≥20% down)':'');
+  $('utilMaintV').textContent=fmt(p.utilMaint);
+  $('titleV').textContent=fmtC(p.title);
+  $('xferV').textContent=p.xfer+'% ('+fmt(p.xfer/100*p.price)+')';
+  $('recV').textContent=fmt(p.rec);
+  $('miscV').textContent=fmt(p.misc);
+  $('hoi1V').textContent=fmt(p.hoi1);
+  $('escrowV').textContent=fmtC(p.escrow);
+  $('reimbV').textContent=fmtC(p.reimb);
+  $('pocV').textContent=fmt(p.poc);
+  $('incomeAV').textContent=fmt(p.eA); $('incomeBV').textContent=fmt(p.eB);
+  $('eitV').textContent=p.eit+'%'; $('debtV').textContent=fmt(p.debt)+'/mo';
+  $('spendV').textContent=fmt(p.spend)+'/mo'; $('cushionV').textContent=fmt(p.cushion)+'/mo';
+}
 
+function renderOutputs(){
+  const p=I();
   const th=takeHome(p);
-  p.netMo=th.netMo; // expose monthly take-home so scenario() can offset lease overlap with income
+  const lcs=loans.map(ln=>loanCalc(p,ln));
 
-  // ----- take-home summary -----
-  const effTaxRate=th.totalTax/p.income*100;
-  const perKpis=[];
-  if(p.eA>0) perKpis.push(`<div class="kpi"><div class="v">${fmt(th.perA.netMo)}</div><div class="l">Person A take-home/mo</div></div>`);
-  if(p.eB>0) perKpis.push(`<div class="kpi"><div class="v">${fmt(th.perB.netMo)}</div><div class="l">Person B take-home/mo</div></div>`);
+  // per-card computed line
+  document.querySelectorAll('#loanCards .loancard').forEach((card,i)=>{
+    const lc=lcs[i], out=card.querySelector('[data-out]');
+    if(lc&&out) out.innerHTML=`P&amp;I <b>${fmt(lc.pi)}</b>/mo · points ${fmt(lc.ptsCost)} · prepaid int ${fmt(lc.prepaidInt)} · cash to close <b>${fmt(lc.cashToClose)}</b>`;
+  });
+
+  renderTable(p,th,lcs);
+  renderChart(p,lcs);
+  renderDetail(p,th,lcs);
+  renderBudget(p,th);
+  renderAssump(p);
+}
+
+function renderTable(p,th,lcs){
+  const tb=$('cmpTable').querySelector('tbody'); tb.innerHTML='';
+  if(!loans.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--muted)">Add a loan above to compare.</td></tr>';return;}
+  const best10=Math.min(...lcs.map(lc=>costAt(lc,120)));
+  loans.forEach((ln,i)=>{
+    const lc=lcs[i];
+    const leftover=th.netMo-lc.monthly-p.utilMaint-p.spend-p.debt;
+    const cashLeft=p.cash-lc.cashToClose;
+    const pctNet=th.netMo>0?lc.monthly/th.netMo*100:0;
+    const c10=costAt(lc,120);
+    tb.innerHTML+=`<tr>
+      <td><span class="chip" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${seriesColor(ln.slot)};margin-right:6px"></span>${esc(ln.name)}</td>
+      <td>${ln.rate.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}%</td>
+      <td>${fmt(lc.pi)}</td>
+      <td>${lc.pmiMo>0?fmt(lc.pmiMo):'—'}</td>
+      <td><b>${fmt(lc.monthly)}</b></td>
+      <td>${pct(pctNet)}</td>
+      <td style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</td>
+      <td>${fmt(lc.lenderCharges)}</td>
+      <td>${fmt(lc.cashToClose)}</td>
+      <td style="color:${cashLeft>=0?'var(--ink)':'var(--bad)'}">${fmt(cashLeft)}</td>
+      <td>${fmt(costAt(lc,60))}</td>
+      <td>${fmt(c10)}${c10<=best10+0.5?' <span class="pill good">best</span>':''}</td>
+    </tr>`;
+  });
+}
+
+// ---------- chart ----------
+const CHART={W:960,H:430,L:70,R:156,T:18,B:40};
+let hoverMonth=null;
+
+function niceTicks(maxV){
+  if(maxV<=0) return {step:1,ticks:[0,1]};
+  const raw=maxV/5, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const step=[1,2,2.5,5,10].map(x=>x*mag).find(s=>s>=raw);
+  const top=Math.ceil(maxV/step-1e-9)*step; // last tick always covers the data max
+  const ticks=[]; for(let v=0;v<=top+1e-9;v+=step)ticks.push(v);
+  return {step,ticks};
+}
+
+function renderChart(p,lcs){
+  const svg=$('chart'), legend=$('chartLegend'), bes=$('breakevens');
+  legend.innerHTML=''; bes.innerHTML='';
+  if(!loans.length){svg.innerHTML='';$('milestones').innerHTML='';return;}
+  const {W,H,L,R,T,B}=CHART, pw=W-L-R, ph=H-T-B;
+  const startYear=+(p.settle||'2026-08-12').slice(0,4), startMonth=+(p.settle||'2026-08-12').slice(5,7);
+  const fns=loans.map((ln,i)=>m=>metricAt(metric,p,lcs[i],m));
+  let maxV=0; fns.forEach(f=>{for(let m=0;m<=TERM_MONTHS;m+=6)maxV=Math.max(maxV,f(m));});
+  const {ticks}=niceTicks(maxV);
+  const yMax=ticks[ticks.length-1]||1;
+  const X=m=>L+m/TERM_MONTHS*pw, Y=v=>T+ph-(v/yMax)*ph;
+
+  let g='';
+  // gridlines + y labels (hairline, solid, recessive)
+  ticks.forEach(v=>{
+    g+=`<line x1="${L}" x2="${L+pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/>`;
+    g+=`<text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" style="font-variant-numeric:tabular-nums">${fmtK(v)}</text>`;
+  });
+  // x axis: calendar years every 5
+  for(let yr=0;yr<=30;yr+=5){
+    const x=X(yr*12);
+    g+=`<line x1="${x}" x2="${x}" y1="${T+ph}" y2="${T+ph+4}" stroke="var(--axis)" stroke-width="1"/>`;
+    g+=`<text x="${x}" y="${T+ph+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${startYear+yr}</text>`;
+  }
+  g+=`<line x1="${L}" x2="${L+pw}" y1="${T+ph}" y2="${T+ph}" stroke="var(--axis)" stroke-width="1"/>`;
+
+  // series lines (2px, round)
+  loans.forEach((ln,i)=>{
+    let d='';
+    for(let m=0;m<=TERM_MONTHS;m++){d+=(m?'L':'M')+X(m).toFixed(1)+' '+Y(fns[i](m)).toFixed(1);}
+    g+=`<path d="${d}" fill="none" stroke="${seriesColor(ln.slot)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+
+  // crossover markers + break-even list (cost metrics only; identical for cost & outlay shapes)
+  if(metric!=='balance'){
+    const seen=new Set();
+    for(let i=0;i<loans.length;i++)for(let j=i+1;j<loans.length;j++){
+      crossovers(fns[i],fns[j]).forEach(m=>{
+        const v=fns[i](m);
+        g+=`<circle cx="${X(m)}" cy="${Y(v)}" r="4.5" fill="var(--ink)" stroke="var(--panel)" stroke-width="2"/>`;
+        const yrs=(m/12);
+        const date=new Date(startYear,startMonth-1+m,1);
+        const when=date.toLocaleDateString(undefined,{month:'short',year:'numeric'});
+        // which loan is cheaper AFTER the crossover
+        const after=Math.min(m+12,TERM_MONTHS);
+        const winner=fns[i](after)<fns[j](after)?loans[i]:loans[j];
+        const loser=winner===loans[i]?loans[j]:loans[i];
+        const key=i+'-'+j+'-'+m;
+        if(!seen.has(key)){seen.add(key);
+          const div=document.createElement('div');
+          const chip=document.createElement('span');
+          chip.style.cssText=`display:inline-block;width:10px;height:10px;border-radius:3px;background:${seriesColor(winner.slot)};margin-right:6px`;
+          div.appendChild(chip);
+          div.appendChild(document.createTextNode(`${winner.name} overtakes ${loser.name} after ${yrs.toFixed(1)} yr (${when}, ~${fmtK(v)} spent)`));
+          bes.appendChild(div);
+        }
+      });
+    }
+    if(!bes.children.length&&loans.length>1){
+      const div=document.createElement('div');div.className='hint';
+      div.textContent='No crossover within 30 years — one loan stays cheaper the whole way.';
+      bes.appendChild(div);
+    }
+  }
+
+  // direct end labels (two lines: value + name), spaced into 28px slots with leader lines when lines converge
+  const ends=loans.map((ln,i)=>({ln,y:Y(fns[i](TERM_MONTHS)),v:fns[i](TERM_MONTHS)})).sort((a,b)=>a.y-b.y);
+  const SLOT=28;
+  let ly=T+12;
+  ends.forEach(e=>{e.ly=Math.max(ly,Math.min(T+ph-10,e.y));ly=e.ly+SLOT;});
+  const over=ends.length?ends[ends.length-1].ly-(T+ph-10):0; // shift up if the stack ran past the bottom
+  if(over>0)ends.forEach(e=>e.ly-=over);
+  ends.forEach(e=>{
+    const nm=e.ln.name.length>18?e.ln.name.slice(0,17)+'…':e.ln.name;
+    const ex=X(TERM_MONTHS);
+    g+=`<circle cx="${ex}" cy="${e.y}" r="4" fill="${seriesColor(e.ln.slot)}" stroke="var(--panel)" stroke-width="2"/>`;
+    if(Math.abs(e.ly-e.y)>5) g+=`<line x1="${ex+5}" y1="${e.y}" x2="${ex+15}" y2="${e.ly}" stroke="var(--muted)" stroke-width="1" opacity=".7"/>`;
+    g+=`<text x="${ex+18}" y="${e.ly-1}" font-size="11" font-weight="600" fill="var(--ink)" style="font-variant-numeric:tabular-nums">${fmtK(e.v)}</text>`;
+    g+=`<text x="${ex+18}" y="${e.ly+11}" font-size="10" fill="var(--muted)">${esc(nm)}</text>`;
+  });
+
+  // hover crosshair layer
+  if(hoverMonth!=null){
+    const x=X(hoverMonth);
+    g+=`<line x1="${x}" x2="${x}" y1="${T}" y2="${T+ph}" stroke="var(--muted)" stroke-width="1" opacity=".6"/>`;
+    loans.forEach((ln,i)=>{
+      g+=`<circle cx="${x}" cy="${Y(fns[i](hoverMonth))}" r="4" fill="${seriesColor(ln.slot)}" stroke="var(--panel)" stroke-width="2"/>`;
+    });
+  }
+  g+=`<rect id="chartHit" x="${L}" y="${T}" width="${pw}" height="${ph}" fill="transparent" tabindex="0" style="outline:none;cursor:crosshair"/>`;
+  svg.innerHTML=g;
+  wireChartHover(p,fns,X,Y,startYear,startMonth);
+
+  // legend (always present for ≥2 series)
+  if(loans.length>1){
+    loans.forEach(ln=>{
+      const li=document.createElement('span');li.className='li';
+      const key=document.createElement('span');key.className='key';key.style.background=seriesColor(ln.slot);
+      li.appendChild(key);li.appendChild(document.createTextNode(ln.name));
+      legend.appendChild(li);
+    });
+  }
+
+  // milestones table (the chart's table twin)
+  const yrsCols=[3,5,7,10,15,20,30];
+  let mt='<table><thead><tr><th>Loan</th>'+yrsCols.map(y=>`<th>${y} yr</th>`).join('')+'</tr></thead><tbody>';
+  loans.forEach((ln,i)=>{
+    mt+=`<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${seriesColor(ln.slot)};margin-right:6px"></span>${esc(ln.name)}</td>`
+      +yrsCols.map(y=>`<td>${fmt(fns[i](y*12))}</td>`).join('')+'</tr>';
+  });
+  $('milestones').innerHTML=mt+'</tbody></table>';
+}
+
+function wireChartHover(p,fns,X,Y,startYear,startMonth){
+  const svg=$('chart'), hit=$('chartHit'), tip=$('chartTip'), wrap=$('chartWrap');
+  if(!hit) return;
+  const {W,L,R}=CHART, pw=W-L-R;
+  function monthFromEvent(ev){
+    const rect=svg.getBoundingClientRect();
+    const sx=(ev.clientX-rect.left)*(W/rect.width);
+    return Math.max(0,Math.min(TERM_MONTHS,Math.round((sx-L)/pw*TERM_MONTHS)));
+  }
+  function showTip(m,clientX,clientY){
+    hoverMonth=m;
+    // redraw markers cheaply: full re-render of chart is fine at this scale
+    renderChart(p,loans.map(ln=>loanCalc(p,ln)));
+    const t=$('chartTip'); t.innerHTML='';
+    const date=new Date(startYear,startMonth-1+m,1);
+    const tt=document.createElement('div');tt.className='tt';
+    tt.textContent=date.toLocaleDateString(undefined,{month:'short',year:'numeric'})+' · year '+(m/12).toFixed(1);
+    t.appendChild(tt);
+    const rows=loans.map((ln,i)=>({ln,v:fns[i](m)})).sort((a,b)=>a.v-b.v);
+    rows.forEach(r=>{
+      const tr=document.createElement('div');tr.className='tr';
+      const key=document.createElement('span');key.className='key';key.style.background=seriesColor(r.ln.slot);
+      const nm=document.createElement('span');nm.className='nm';nm.textContent=r.ln.name;
+      const vv=document.createElement('span');vv.className='vv';vv.textContent=fmt(r.v);
+      tr.appendChild(key);tr.appendChild(nm);tr.appendChild(vv);
+      t.appendChild(tr);
+    });
+    t.style.display='block';
+    const wr=wrap.getBoundingClientRect();
+    let lx=clientX-wr.left+14, ly=clientY-wr.top-10;
+    if(lx+190>wr.width) lx=clientX-wr.left-200;
+    t.style.left=lx+'px'; t.style.top=Math.max(0,ly)+'px';
+  }
+  function hideTip(){
+    hoverMonth=null; $('chartTip').style.display='none';
+    renderChart(p,loans.map(ln=>loanCalc(p,ln)));
+  }
+  hit.addEventListener('pointermove',ev=>showTip(monthFromEvent(ev),ev.clientX,ev.clientY));
+  hit.addEventListener('pointerleave',hideTip);
+  hit.addEventListener('keydown',ev=>{
+    let m=hoverMonth==null?0:hoverMonth;
+    if(ev.key==='ArrowRight')m=Math.min(TERM_MONTHS,m+(ev.shiftKey?12:3));
+    else if(ev.key==='ArrowLeft')m=Math.max(0,m-(ev.shiftKey?12:3));
+    else if(ev.key==='Home')m=0;
+    else if(ev.key==='End')m=TERM_MONTHS;
+    else if(ev.key==='Escape'){hideTip();return;}
+    else return;
+    ev.preventDefault();
+    const rect=svg.getBoundingClientRect();
+    showTip(m,rect.left+(L+m/TERM_MONTHS*pw)*(rect.width/W),rect.top+40);
+  });
+}
+
+$('metricSegs').querySelectorAll('button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    metric=b.dataset.m;
+    $('metricSegs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    renderOutputs(); saveState();
+  });
+});
+
+// ---------- loan detail ----------
+function renderDetail(p,th,lcs){
+  const sel=$('detailLoan');
+  const prev=sel.value;
+  sel.innerHTML='';
+  loans.forEach((ln,i)=>{
+    const o=document.createElement('option');o.value=i;o.textContent=ln.name;sel.appendChild(o);
+  });
+  if(prev!==''&&+prev<loans.length)sel.value=prev;
+  const i=+sel.value||0;
+  if(!loans.length){$('detMonthly').innerHTML='';$('detCash').innerHTML='';$('detFlags').innerHTML='';return;}
+  const ln=loans[i], lc=lcs[i];
+  $('detMonthly').innerHTML=`<table>
+    <thead><tr><th colspan="2">Monthly payment</th></tr></thead>
+    <tr><td>Principal &amp; interest (${ln.rate}%)</td><td>${fmtC(lc.pi)}</td></tr>
+    <tr><td>Property tax</td><td>${fmtC(lc.taxMo)}</td></tr>
+    <tr><td>Homeowners insurance</td><td>${fmtC(lc.insMo)}</td></tr>
+    <tr><td>PMI${lc.pmiMo>0?` (drops off ~yr ${(lc.pmiEnd/12).toFixed(1)})`:''}</td><td>${lc.pmiMo>0?fmtC(lc.pmiMo):'—'}</td></tr>
+    <tr><td>HOA</td><td>${fmtC(p.hoa)}</td></tr>
+    <tr class="total"><td>Total payment</td><td>${fmtC(lc.monthly)}</td></tr>
+    <tr><td>+ utilities &amp; maintenance</td><td>${fmtC(p.utilMaint)}</td></tr>
+    <tr class="total"><td>All-in monthly</td><td>${fmtC(lc.monthly+p.utilMaint)}</td></tr>
+  </table>`;
+  $('detCash').innerHTML=`<table>
+    <thead><tr><th colspan="2">Cash to close</th></tr></thead>
+    <tr><td>Down payment (${p.down}%)</td><td>${fmtC(lc.downAmt)}</td></tr>
+    ${lc.gap>0?`<tr><td>Appraisal gap</td><td>${fmtC(lc.gap)}</td></tr>`:''}
+    <tr><td>Points (${ln.pts}%)</td><td>${fmtC(lc.ptsCost)}</td></tr>
+    <tr><td>Lender fees</td><td>${fmtC(ln.fees)}</td></tr>
+    ${ln.credits>0?`<tr><td>Lender credits</td><td>−${fmtC(ln.credits)}</td></tr>`:''}
+    <tr><td>Prepaid interest (${p.prepaidDays} days)</td><td>${fmtC(lc.prepaidInt)}</td></tr>
+    <tr><td>Title insurance</td><td>${fmtC(p.title)}</td></tr>
+    <tr><td>Transfer tax (${p.xfer}%)</td><td>${fmtC(p.xfer/100*p.price)}</td></tr>
+    <tr><td>Recording + notary</td><td>${fmtC(p.rec)}</td></tr>
+    <tr><td>HOA capitalization + misc</td><td>${fmtC(p.misc)}</td></tr>
+    <tr><td>Homeowners ins. year 1</td><td>${fmtC(p.hoi1)}</td></tr>
+    <tr><td>Lender escrows</td><td>${fmtC(p.escrow)}</td></tr>
+    <tr><td>Seller reimbursements</td><td>${fmtC(p.reimb)}</td></tr>
+    <tr class="total"><td>Total cash needed</td><td>${fmtC(lc.totalCashNeeded)}</td></tr>
+    <tr><td>− Earnest deposit</td><td>−${fmtC(p.earnest)}</td></tr>
+    <tr><td>− Already paid (POC)</td><td>−${fmtC(p.poc)}</td></tr>
+    <tr class="total"><td>Cash at settlement</td><td>${fmtC(lc.cashToClose)}</td></tr>
+  </table>`;
+  // flags
+  const leftover=th.netMo-lc.monthly-p.utilMaint-p.spend-p.debt;
+  const hu=lc.monthly+p.utilMaint;
+  const backEnd=th.grossMo>0?(lc.monthly+p.debt)/th.grossMo*100:0;
+  const flags=[];
+  flags.push(leftover>=p.cushion
+    ?`<div class="flag">✅ ${fmt(leftover)}/mo left after payment + living costs — meets your ${fmt(p.cushion)} cushion.</div>`
+    :leftover>=0
+      ?`<div class="flag">⚠️ Only ${fmt(leftover)}/mo left — below your ${fmt(p.cushion)} cushion.</div>`
+      :`<div class="flag">🚩 <b style="color:var(--bad)">Negative ${fmt(leftover)}/mo — this payment exceeds take-home minus spending.</b></div>`);
+  flags.push(`<div class="flag">${backEnd<=43?'✅':'⚠️'} Back-end DTI ${pct(backEnd)} ${backEnd<=43?'(within typical 43% lender max)':'(above typical 43% lender max)'}.</div>`);
+  const cashLeft=p.cash-lc.cashToClose;
+  flags.push(cashLeft>=0
+    ?`<div class="flag">✅ ${fmt(cashLeft)} cash remaining after closing.</div>`
+    :`<div class="flag">🚩 <b style="color:var(--bad)">Short ${fmt(-cashLeft)} of cash to close.</b></div>`);
+  [['A',th.perA,p.eA,'B'],['B',th.perB,p.eB,'A']].forEach(([nm,per,inc,other])=>{
+    if(inc<=0)return;
+    flags.push(hu<=per.soloMo
+      ?`<div class="flag">✅ Worst case (Person ${other} jobless, Person ${nm} halts 401k/HSA → ${fmt(per.soloMo)}/mo): still covers payment + utilities (${fmt(hu)}/mo).</div>`
+      :`<div class="flag">🚩 <b style="color:var(--bad)">Worst case (Person ${other} jobless, Person ${nm} halts 401k/HSA → ${fmt(per.soloMo)}/mo): can't cover payment + utilities (${fmt(hu)}/mo).</b></div>`);
+  });
+  $('detFlags').innerHTML=flags.join('');
+}
+$('detailLoan').addEventListener('input',()=>renderOutputs());
+
+// ---------- budget ----------
+function renderBudget(p,th){
+  const effTaxRate=th.income>0?th.totalTax/th.income*100:0;
   $('netSummary').innerHTML=`
-    <div class="bignum">${fmt(th.net)} <small>/yr take-home &nbsp;·&nbsp; ${fmt(th.netMo)}/mo combined</small></div>
+    <div class="bignum">${fmt(th.net)} <small>/yr take-home · ${fmt(th.netMo)}/mo combined</small></div>
     <div class="kpis">
       <div class="kpi"><div class="v">${fmt(th.grossMo)}</div><div class="l">Gross / mo</div></div>
       <div class="kpi"><div class="v">${pct(effTaxRate)}</div><div class="l">Eff. tax rate</div></div>
       <div class="kpi"><div class="v">${fmt(th.c401+th.hsa)}</div><div class="l">401k+HSA saved</div></div>
-    </div>
-    ${perKpis.length?`<div class="kpis" style="margin-top:10px">${perKpis.join('')}</div>`:''}`;
+    </div>`;
   $('taxBreak').innerHTML=`<table>
-    <tr><td>Gross income</td><td>${fmt(p.income)}</td></tr>
-    <tr><td>− 401(k) ×${p.earners} (pre-tax fed)</td><td>−${fmt(th.c401)}</td></tr>
-    <tr><td>− HSA family (pre-tax)</td><td>−${fmt(th.hsa)}</td></tr>
+    <tr><td>Gross income</td><td>${fmt(th.income)}</td></tr>
+    <tr><td>− 401(k) + HSA (pre-tax)</td><td>−${fmt(th.c401+th.hsa)}</td></tr>
     <tr><td>Federal taxable (after $${STD_DED.toLocaleString()} std ded)</td><td>${fmt(th.fedTI)}</td></tr>
     <tr><td>Federal income tax</td><td>−${fmt(th.fed)}</td></tr>
-    <tr><td>Social Security (6.2%)</td><td>−${fmt(th.ss)}</td></tr>
-    <tr><td>Medicare (1.45%+)</td><td>−${fmt(th.med)}</td></tr>
+    <tr><td>Social Security</td><td>−${fmt(th.ss)}</td></tr>
+    <tr><td>Medicare</td><td>−${fmt(th.med)}</td></tr>
     <tr><td>PA state (3.07%)</td><td>−${fmt(th.pa)}</td></tr>
     <tr><td>Local EIT (${p.eit}%)</td><td>−${fmt(th.eit)}</td></tr>
     <tr class="total"><td>Spendable take-home</td><td>${fmt(th.net)}</td></tr>
   </table>`;
-  $('netNote').innerHTML=`Take-home subtracts your 401(k) + HSA contributions (they're not spendable). Uses the <b>standard deduction</b>; itemizing mortgage interest + up to $40k SALT could raise your take-home and budget, so treat these as <b>conservative</b>.`;
+}
 
-  // ----- strategy table -----
-  const strategies=[
-    {name:'20% down', r:Object.assign(maxForDownFrac(p,th,0.20),{downFrac:0.20})},
-    {name:'Optimized down %', r:optimize(p,th)},
-    {name:'All cash above EF', r:maxAllCash(p,th)},
-  ];
-  const tb=$('stratTable').querySelector('tbody'); tb.innerHTML='';
-  strategies.forEach(st=>{
-    const r=st.r,s=r.s;
-    const np=s.core/th.netMo*100; // housing as % of take-home (front-end)
-    const dpLabel=(r.downFrac!=null)?(r.downFrac*100).toFixed(0)+'%':'';
-    tb.innerHTML+=`<tr style="cursor:pointer" title="Load this scenario into the explorer below" onclick="loadStrat(${Math.round(r.price)},${(r.downFrac*100).toFixed(2)})">
-      <td>${st.name}${st.name.includes('Optimized')?' <span class="hint">('+dpLabel+')</span>':''} <span class="hint">↓load</span></td>
-      <td><b>${fmt(r.price)}</b></td>
-      <td>${fmt(s.down)}<br><span class="hint">${dpLabel}</span></td>
-      <td>${fmt(s.loan)}</td>
-      <td>${fmt(s.core)}</td>
-      <td>${fmt(s.homeLiving)}</td>
-      <td>${pct(np)}</td>
-      <td><span class="pill ${r.binding.includes('cash')?'warn':'good'}">${r.binding}</span></td>
-    </tr>`;
-  });
-  // recommendation
-  const twenty=strategies[0].r, opt=strategies[1].r;
-  let recMsg;
-  if(opt.price>twenty.price+15000){
-    recMsg=`Putting <b>${(opt.downFrac*100).toFixed(0)}% down</b> gets you the most house (~${fmt(opt.price)}) — your monthly budget (take-home − expenses − cushion), not cash, is binding, so a bigger down payment shrinks the loan and lets you buy more.`;
-  } else {
-    recMsg=`<b>20% down</b> (~${fmt(twenty.price)}) is your max — cash on hand is the limiter, so the minimum 20% gives you the most house. Extra cash beyond that just lowers the loan (see "all cash").`;
-  }
-  $('rec').innerHTML='💡 '+recMsg+' &nbsp;Drag the explorer below to a target price to pressure-test the monthly numbers.';
-
-  // sync explore slider max to the optimized result — but never below the
-  // current value, so changing other fields can't silently clamp the explorer.
-  const expHi=Math.max(2000000, Math.ceil(opt.price*1.3/50000)*50000, Math.ceil((+$('expPrice').value)*1.05/50000)*50000);
-  $('expPrice').max=expHi;
-
-  // ----- explore -----
-  const expPrice=+$('expPrice').value, expDown=+$('expDown').value/100;
-  $('expPriceV').textContent=fmt(expPrice); $('expDownV').textContent=(expDown*100).toFixed(0)+'% ('+fmt(expPrice*expDown)+')';
-  // explored-home params (pe): overrides that only apply to THIS specific listing, never the
-  // max-affordable table above (which has no specific home). (1) an actual $ tax is converted to
-  // the equivalent effective %-of-price for this price; (2) a low appraisal becomes a gap-cash
-  // dollar amount the buyer covers at closing.
-  const pe=Object.assign({},p,{
-    ptax:(p.ptaxDollar!=null && expPrice>0)?p.ptaxDollar/expPrice*100:p.ptax,
-    apprGap:(p.appraised!=null)?Math.max(0,expPrice-p.appraised):0
-  });
-  const es=scenario(pe,expPrice,expDown);
-  const esEf=efFor(p,es);
-  const egp=es.core/th.grossMo*100, enp=es.core/th.netMo*100; // housing as % of income
-  const cashShort=es.cashToClose-(p.cash-esEf);
-  const efAfter=p.cash-es.cashToClose;
-  const leftover = th.netMo - es.totalMonthly - p.expenses - p.debt; // discretionary/savings left each month
-  $('expHead').innerHTML=`${fmt(es.core)}<small>/mo housing &nbsp;·&nbsp; ${pct(egp)} of gross &nbsp;·&nbsp; ${pct(enp)} of take-home</small>`;
-  $('expKpis').innerHTML=`
-    <div class="kpi"><div class="v">${fmt(es.pi)}</div><div class="l">P&amp;I @ ${es.eff.toFixed(2)}%</div></div>
-    <div class="kpi"><div class="v">${es.pmi>0?fmt(es.pmi):'—'}</div><div class="l">PMI (${(es.ltv*100).toFixed(0)}% LTV)</div></div>
-    <div class="kpi"><div class="v">${fmt(es.cashToClose)}</div><div class="l">Cash to close</div></div>
-    <div class="kpi"><div class="v" style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</div><div class="l">Leftover / mo</div></div>`;
-  const spentPct = Math.min(100,(es.totalMonthly+p.expenses+p.debt)/th.netMo*100);
-  $('expBarLabel').textContent=`Housing + living expenses + debt = ${pct(spentPct)} of take-home · ${fmt(leftover)}/mo left`;
-  $('expBar').style.width=spentPct+'%';
-  $('expBar').style.background = leftover>=p.cushion?'linear-gradient(90deg,#34d399,#38bdf8)' : leftover>=0?'linear-gradient(90deg,#fbbf24,#38bdf8)':'linear-gradient(90deg,#f87171,#fbbf24)';
-  // flags
-  const flags=[];
-  flags.push(cashShort<=0
-    ? `<div class="flag">✅ Cash works — ${fmt(p.cash-es.cashToClose)} left, keeping the ${fmt(esEf)} emergency fund ${efAfter>=esEf?'intact':'<b style="color:var(--bad)">(short!)</b>'}.</div>`
-    : `<div class="flag">❌ <b style="color:var(--bad)">Short ${fmt(cashShort)} of cash</b> after preserving the ${fmt(esEf)} emergency fund.</div>`);
-  flags.push(es.ltv>0.80
-    ? `<div class="flag">⚠️ Under 20% down → paying PMI (~${fmt(es.pmi)}/mo) until you reach 20% equity.</div>`
-    : `<div class="flag">✅ ≥20% down → no PMI.</div>`);
-  flags.push(leftover>=p.cushion
-    ? `<div class="flag">✅ ${fmt(leftover)}/mo left after housing + expenses — meets your ${fmt(p.cushion)} cushion (${pct(enp)} of take-home on housing).</div>`
-    : leftover>=0
-      ? `<div class="flag">⚠️ Only ${fmt(leftover)}/mo left after housing + expenses — below your ${fmt(p.cushion)} cushion.</div>`
-      : `<div class="flag">🚩 <b style="color:var(--bad)">Negative ${fmt(leftover)}/mo — housing + expenses exceed take-home.</b></div>`);
-  const backEnd=(es.totalMonthly+p.debt)/th.grossMo*100;
-  flags.push(`<div class="flag">${backEnd<=43?'✅':'⚠️'} Back-end DTI ${pct(backEnd)} ${backEnd<=43?'(within typical lender max of 43%)':'(above typical 43% lender max)'}.</div>`);
-  // single-income resilience: can one salary alone carry mortgage + utilities?
-  const hu=es.core+es.util; // PITI + PMI + HOA + utilities
-  [['A',th.perA,p.eA,'B'],['B',th.perB,p.eB,'A']].forEach(([nm,per,inc,other])=>{
-    if(inc<=0) return;
-    // (a) current paycheck alone
-    flags.push(hu<=per.netMo
-      ? `<div class="flag">✅ Person ${nm}'s current take-home (${fmt(per.netMo)}/mo) alone covers mortgage + utilities (${fmt(hu)}/mo).</div>`
-      : `<div class="flag">⚠️ Person ${nm}'s current take-home (${fmt(per.netMo)}/mo) alone doesn't cover mortgage + utilities (${fmt(hu)}/mo) — relies on both incomes.</div>`);
-    // (b) worst case: Person `other` loses their job, Person `nm` halts 401k+HSA
-    flags.push(hu<=per.soloMo
-      ? `<div class="flag">✅ Worst case (Person ${other} jobless, Person ${nm} halts 401k+HSA → ${fmt(per.soloMo)}/mo): still covers mortgage + utilities.</div>`
-      : `<div class="flag">🚩 <b style="color:var(--bad)">Worst case (Person ${other} jobless, Person ${nm} halts 401k+HSA → ${fmt(per.soloMo)}/mo): can't cover mortgage + utilities (${fmt(hu)}/mo).</b></div>`);
-  });
-  $('expFlags').innerHTML=flags.join('');
-  $('expMonthly').innerHTML=`<table>
-    <tr><td colspan="2" style="color:var(--accent);font-size:.72rem;letter-spacing:.04em">HOUSING (mortgage)</td></tr>
-    <tr><td>Principal &amp; interest</td><td>${fmt(es.pi)}</td></tr>
-    <tr><td>Property tax (${p.ptaxDollar!=null?fmt(p.ptaxDollar)+'/yr actual':p.ptax+'%'})</td><td>${fmt(es.tax)}</td></tr>
-    <tr><td>Home insurance (${p.ins}%)</td><td>${fmt(es.ins)}</td></tr>
-    <tr><td>PMI</td><td>${fmt(es.pmi)}</td></tr>
-    <tr><td>HOA</td><td>${fmt(es.hoa)}</td></tr>
-    <tr class="total"><td>Housing subtotal</td><td>${fmt(es.core)}</td></tr>
-    <tr><td colspan="2" style="color:var(--accent);font-size:.72rem;letter-spacing:.04em;padding-top:10px">LIVING EXPENSES</td></tr>
-    <tr><td>Utilities</td><td>${fmt(es.util)}</td></tr>
-    <tr><td>Maintenance reserve (${p.maint}%)</td><td>${fmt(es.maint)}</td></tr>
-    <tr><td>Other expenses (food, etc.)</td><td>${fmt(p.expenses)}</td></tr>
-    <tr><td>Other debt</td><td>${fmt(p.debt)}</td></tr>
-    <tr class="total"><td>Living + debt subtotal</td><td>${fmt(es.homeLiving+p.expenses+p.debt)}</td></tr>
-    <tr class="total"><td>Total committed / month</td><td>${fmt(es.totalMonthly+p.expenses+p.debt)}</td></tr>
-    <tr><td>Leftover (after cushion target ${fmt(p.cushion)})</td><td style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</td></tr>
-  </table>`;
-  $('expCash').innerHTML=`<table>
-    <tr><td>Down payment (${(expDown*100).toFixed(0)}%)</td><td>${fmt(es.down)}</td></tr>
-    ${es.apprGap>0?`<tr><td>Appraisal gap<br><span class="hint">${fmt(expPrice)} price − ${fmt(p.appraised)} appraised; lender won't finance it, so it's cash (loan drops to ${fmt(es.loan)})</span></td><td>${fmt(es.apprGap)}</td></tr>`:''}
-    <tr><td>Closing costs (${p.close}%)<br><span class="hint">title insurance + lender/settlement fees + prepaid interest</span></td><td>${fmt(es.closing)}</td></tr>
-    <tr><td>Transfer tax (${p.xfer}%)<br><span class="hint">PA realty transfer tax, buyer's customary half</span></td><td>${fmt(es.xferTax)}</td></tr>
-    <tr><td>Property tax prepaid (${p.taxProrate} mo)<br><span class="hint">${p.taxProrate} mo × ${fmt(es.tax)}/mo — escrow funding + seller reimbursement</span></td><td>${fmt(es.taxProrate)}</td></tr>
-    <tr><td>Buyer's agent fee (${p.agent}%)</td><td>${fmt(es.agentFee)}</td></tr>
-    <tr><td>Lease overlap from savings<br><span class="hint">${p.leaseNotice} mo × (${fmt(p.leaseRent)} rent − ${fmt(es.surplus)}/mo income surplus${es.leaseDrainMo<=0?' — fully covered by income':''})</span></td><td>${fmt(es.leaseCarryover)}</td></tr>
-    <tr><td>Discount points (${p.points})</td><td>${fmt(es.pointsCost)}</td></tr>
-    <tr><td>Lender LLPA fee<br><span class="hint">${es.llpaRate.toFixed(3)}% of loan @ ${(es.ltv*100).toFixed(0)}% LTV (780+ tier)</span></td><td>${fmt(es.llpaCost)}</td></tr>
-    <tr class="total"><td>Cash to close</td><td>${fmt(es.cashToClose)}</td></tr>
-    <tr><td>Cash on hand</td><td>${fmt(p.cash)}</td></tr>
-    <tr><td>Remaining after close</td><td style="color:${efAfter>=esEf?'var(--good)':'var(--bad)'}">${fmt(efAfter)}</td></tr>
-    <tr><td>Emergency fund needed<br><span class="hint">${p.efMonths} mo × ${fmt(es.pi+es.pmi+es.tax+es.ins+es.hoa+es.util)}/mo + ${fmt(p.efFixed)}</span></td><td>${fmt(esEf)}</td></tr>
-  </table>`;
-
-  // ----- points analysis (on the explore loan) -----
-  renderPoints(pe,th,expPrice,expDown);
-
-  // ----- assumptions -----
+function renderAssump(p){
   $('assump').innerHTML=`
-    <b>Tax year 2026, MFJ.</b> Std deduction $${STD_DED.toLocaleString()}; SS wage base $${SS_WAGE_BASE.toLocaleString()}/person; 401(k) $${MAX_401K.toLocaleString()}/person; HSA family $${HSA_FAMILY.toLocaleString()}.
-    PA flat 3.07% (PA taxes 401(k) but not HSA). Local EIT defaults to 1.0% (typical for Chester County townships) — set it for yours.
-    Property tax is entered directly as an effective % of price, derived from 2025 school millage (WCASD 23.38 / DASD 31.91) + county + municipal, × Chester County CLR 30.6%. Reference: WCASD ≈1.0%, DASD ≈1.25%, East Caln Twp (DASD) ≈1.328%. PA doesn't spot-reassess on sale, so for a specific older listing you can paste its actual annual tax $ to override the %; that override applies to the explored home only (the max-affordable table keeps the % rate).
-    All loans are modeled as <b>30-year fixed</b>. Lifetime-interest figures are P&amp;I only and assume the loan is held to term.
-    <b>Cash to close</b> = down payment + any appraisal gap + closing costs (${p.close}% of price: title insurance + lender/settlement fees + prepaid interest) + <b>transfer tax</b> (${p.xfer}% of price) + <b>property-tax prepaids</b> (${p.taxProrate} months) + buyer's agent fee (${p.agent}% of price) + lender LLPA + lease overlap + any discount points. <b>Transfer tax</b> is PA's realty transfer tax: 2% of price total, customarily split, so the buyer pays ~1%. <b>Property-tax prepaids</b> cover both the lender's tax-escrow funding and reimbursing the seller for taxes they prepaid; it's charged as a number of months of the property tax and is highly timing-dependent — a summer closing right after the annual school-tax bill can run 12+ months, while one just before it runs near zero. The <b>appraisal gap</b> (explored home only) applies when you enter an appraised value below your price: lenders finance against the lower of price or appraisal, so you cover the difference in cash, which reduces the loan dollar-for-dollar. The buyer's agent fee reflects your signed buyer's-agency commission; set it to 0 if the seller covers it as a concession. <b>LLPA</b> (Fannie Mae loan-level price adjustment, 780+ credit tier, 30-yr purchase, eff. 2026-01-28) is a one-time fee charged as a % of the loan based on LTV — 0% at ≤75% LTV (≥25% down), 0.375% at 75–80% (20% down), 0.375% at 80–85% (15%), 0.250% at 85–95% (10–5%); it can alternatively be priced into the rate. <b>Lease overlap</b> models the ${p.leaseNotice}-month notice on your month-to-month lease (${fmt(p.leaseRent)}/mo rent + utilities): during those months you double-pay, but your paychecks keep coming, so only the portion your monthly income surplus can't absorb (${fmt(es.leaseDrainMo)}/mo here) draws down savings — the rest is funded by income, not your closing cash. Utilities auto-estimate at $250 base + $0.16/sqft when left blank.<br>
-    Sources:
+    <b>Purchase.</b> 201 Snowberry Way, West Whiteland Twp — under contract at ${fmt(p.price)}, settling ${esc(p.settle)}. All loans are <b>30-year fixed, conventional</b>. Closing-cost defaults come from the KW Buyer's Estimated Closing Cost report (v4, 6/22/26); at 6.9% / 20% down / 0 points they reproduce it exactly: $5,028.21/mo and $149,995.89 cash at settlement.
+    <b>Per-loan numbers.</b> Prepaid interest = loan × rate / 365 × ${p.prepaidDays} days (settlement to month-end). Lender charges = points + fees − credits + prepaid interest; enter each lender's own fee total (the $750 default is the KW estimate's appraisal $375 + credit report $25 + doc prep $200 + flood cert $25 + tax-service $125). Rate-sheet pricing already embeds LLPAs, so no separate LLPA is modeled. PMI (if &lt;20% down) runs until the balance amortizes to 78% of price.
+    <b>Chart.</b> “True cost” = cumulative interest + PMI + lender charges — principal builds equity so it isn't a cost; crossover dots mark where one loan's total passes another's. “Total outlay” adds principal, taxes, insurance, HOA and all upfront cash (including earnest + POC); identical across-loan shifts, so crossovers match. Escrows/reimbursements are timing-based prepayments of taxes and insurance, counted in cash-to-close but not in true cost.
+    <b>Take-home.</b> 2026 MFJ: std deduction $${STD_DED.toLocaleString()}, 401(k) $${MAX_401K.toLocaleString()}/person + HSA $${HSA_FAMILY.toLocaleString()} maxed, SS wage base $${SS_WAGE_BASE.toLocaleString()}/person, PA 3.07% + EIT ${p.eit}%. Standard deduction only (no itemized mortgage interest/SALT) — conservative.
+    <br>Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·
-    <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k)/limits</a> ·
+    <a href="https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500" target="_blank">2026 401(k) limits</a> ·
     <a href="https://www.fidelity.com/learning-center/smart-money/hsa-contribution-limits" target="_blank">2026 HSA limits</a> ·
-    <a href="https://dced.pa.gov/local-government/local-income-tax-information/psd-codes-and-eit-rates/" target="_blank">PA EIT rates</a> ·
-    <a href="https://www.pa.gov/agencies/revenue/resources/tax-types-and-information/realty-transfer-tax/common-level-ratios" target="_blank">PA Common Level Ratios</a> ·
-    <a href="https://www.dasd.org/departments/business/taxes" target="_blank">DASD taxes</a> ·
-    <a href="https://www.wcasd.net" target="_blank">WCASD</a>.
-    <br><i>Estimates only — not financial advice. Verify a specific property's assessment and get lender quotes.</i>`;
+    <a href="https://dced.pa.gov/local-government/local-income-tax-information/psd-codes-and-eit-rates/" target="_blank">PA EIT rates</a>.
+    <br><i>Estimates only — not financial advice. Final numbers come from the lender's Loan Estimate / Closing Disclosure.</i>`;
 }
 
-function renderPoints(p,th,price,downFrac){
-  const base=scenario(p,price,downFrac); // current points
-  const cashFree=p.cash-efFor(p,base);
-  // compare 0 points vs current points (if any) and a few options
-  const opts=[0,1,2,3];
-  let rows='';
-  const ref=Object.assign({},p,{points:0});
-  const refS=scenario(ref,price,downFrac);
-  opts.forEach(pt=>{
-    const pp=Object.assign({},p,{points:pt});
-    const s=scenario(pp,price,downFrac);
-    const moSave=refS.pi - s.pi;
-    const cost=s.pointsCost;
-    const be=moSave>0?cost/moSave:Infinity;
-    rows+=`<tr ${pt===p.points?'class="total"':''}>
-      <td>${pt} ${pt===p.points?'(current)':''}</td>
-      <td>${s.eff.toFixed(2)}%</td>
-      <td>${fmt(s.pi)}</td>
-      <td>${pt===0?'—':fmt(cost)}</td>
-      <td>${pt===0?'—':fmt(moSave)+'/mo'}</td>
-      <td>${pt===0?'—':(isFinite(be)?be.toFixed(0)+' mo ('+(be/12).toFixed(1)+' yr)':'—')}</td>
-    </tr>`;
-  });
-  $('pointsAnalysis').innerHTML=`
-    <div class="hint" style="margin-bottom:8px">On the explored ${fmt(price)} home at ${(downFrac*100).toFixed(0)}% down (loan ${fmt(base.loan)}). Each point = 1% of loan, lowers rate ${p.buydown}%/pt. "Break-even" = months for monthly savings to repay the upfront cost.</div>
-    <table>
-      <thead><tr><th>Points</th><th>Rate</th><th>P&amp;I</th><th>Upfront</th><th>Saves</th><th>Break-even</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="note">With ${fmt(cashFree)} of cash above your emergency fund, points compete with your down payment. Buying points helps most if you'll <b>keep the loan past the break-even</b> (often 4–7 yrs) and your budget is monthly-constrained. If you're cash-constrained, that money usually does more as down payment (shrinks the loan <i>and</i> can kill PMI).</div>`;
-}
-
-// ---------- load a strategy row into the explorer (so monthly numbers match) ----------
-window.loadStrat=function(price,dpPct){
-  const ep=$('expPrice');
-  if(price>+ep.max) ep.max=Math.ceil(price*1.1/50000)*50000;
-  ep.value=Math.round(price);
-  $('expDown').value=Math.round(dpPct);
-  render(); saveState(); // programmatic change doesn't fire 'input', so persist explicitly
-  document.getElementById('expHead').scrollIntoView({behavior:'smooth',block:'center'});
-};
-
-// ---------- wire up number<->range pairs ----------
-function pair(numId,rangeId){
+// ---------- number<->range pairs ----------
+function pairInputs(numId,rangeId){
   const n=$(numId),r=$(rangeId);
   if(!r)return;
-  n.addEventListener('input',()=>{r.value=n.value;render();});
-  r.addEventListener('input',()=>{n.value=r.value;render();});
+  n.addEventListener('input',()=>{r.value=n.value;});
+  r.addEventListener('input',()=>{n.value=r.value;});
 }
-['incomeA','incomeB','cash','rate','ptax'].forEach(id=>pair(id,id+'R'));
+pairInputs('down','downR');
 
-// ---------- persistence (localStorage) + shareable links ----------
-const LS_KEY='homecalc_v1';
-// snapshot every input/select value into a plain object keyed by element id
+// ---------- persistence + share links ----------
+const LS_KEY='homecalc_v2';
 function collectState(){
-  const data={};
-  document.querySelectorAll('input,select').forEach(el=>{
-    if(!el.id) return;
-    data[el.id] = (el.type==='checkbox') ? el.checked : el.value;
+  const inputs={};
+  document.querySelectorAll('.wrap input:not([data-f]),.wrap select').forEach(el=>{
+    if(!el.id||el.id==='detailLoan')return;
+    inputs[el.id]=el.value;
   });
-  return data;
+  return {v:2,inputs,metric,loans:loans.map(l=>({name:l.name,rate:l.rate,pts:l.pts,credits:l.credits,fees:l.fees,slot:l.slot}))};
 }
-// write a snapshot back onto the controls (does NOT fire input events / save)
 function applyState(data){
-  if(!data) return;
-  $('expPrice').max=100000000; // raise before restoring so a large saved value isn't clamped (render resets it)
-  document.querySelectorAll('input,select').forEach(el=>{
-    if(!el.id || !(el.id in data)) return;
-    if(el.type==='checkbox') el.checked=data[el.id]; else el.value=data[el.id];
-  });
+  if(!data||!data.inputs)return;
+  Object.entries(data.inputs).forEach(([id,v])=>{const el=$(id);if(el)el.value=v;});
+  if(Array.isArray(data.loans)){
+    loans=data.loans.slice(0,MAX_LOANS).map((l,i)=>({
+      name:String(l.name||('Loan '+(i+1))), rate:+l.rate||0, pts:+l.pts||0,
+      credits:+l.credits||0, fees:+l.fees||0,
+      slot:(typeof l.slot==='number'&&l.slot>=0&&l.slot<MAX_LOANS)?l.slot:i
+    }));
+    // dedupe slots
+    const used=new Set();
+    loans.forEach(l=>{if(used.has(l.slot)){for(let s=0;s<MAX_LOANS;s++)if(!used.has(s)){l.slot=s;break;}}used.add(l.slot);});
+  }
+  if(typeof data.metric==='string'&&['cost','outlay','balance'].includes(data.metric)){
+    metric=data.metric;
+    $('metricSegs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.m===metric));
+  }
 }
-function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(collectState())); }catch(e){} }
-function loadState(){ try{ applyState(JSON.parse(localStorage.getItem(LS_KEY)||'null')); }catch(e){} }
+function saveState(){try{localStorage.setItem(LS_KEY,JSON.stringify(collectState()));}catch(e){}}
+function loadState(){try{applyState(JSON.parse(localStorage.getItem(LS_KEY)||'null'));}catch(e){}}
 
-// --- shareable links: pack the whole scenario into the URL hash ---
-// UTF-8-safe base64, then URI-encoded so chat apps don't mangle + / =
-function encodeState(d){ return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(d))))); }
-function decodeState(s){ return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(s))))); }
-function shareURL(){ return location.href.split('#')[0] + '#s=' + encodeState(collectState()); }
-// If opened with a #s=... scenario, apply it and strip the hash so the
-// visitor's own later edits (saved to localStorage) win on reload. We do NOT
-// overwrite their saved entries up front — viewing a link is non-destructive.
+function encodeState(d){return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(d)))));}
+function decodeState(s){return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(s)))));}
+function shareURL(){return location.href.split('#')[0]+'#s='+encodeState(collectState());}
 function loadFromURL(){
   const m=location.hash.match(/[#&]s=([^&]+)/);
-  if(!m) return false;
+  if(!m)return false;
   try{
     applyState(decodeState(m[1]));
-    try{ history.replaceState(null,'',location.href.split('#')[0]); }catch(e){}
+    try{history.replaceState(null,'',location.href.split('#')[0]);}catch(e){}
     return true;
-  }catch(e){ return false; }
+  }catch(e){return false;}
 }
 window.copyShare=function(ev){
-  if(ev) ev.preventDefault();
-  const url=shareURL(), msg=$('shareMsg');
+  if(ev)ev.preventDefault();
+  const url=shareURL(),msg=$('shareMsg');
   const done=ok=>{
-    if(!msg) return;
-    if(ok){ msg.textContent='✓ Link copied — it opens this exact scenario.'; }
-    else{ msg.textContent='Couldn’t copy automatically — press ⌘/Ctrl-C to copy from the address bar.';
-          try{ history.replaceState(null,'','#s='+encodeState(collectState())); }catch(e){} }
-    setTimeout(()=>{ if(msg) msg.textContent=''; },5000);
+    if(!msg)return;
+    msg.textContent=ok?'✓ Link copied — it opens this exact scenario.':'Couldn’t copy — press ⌘/Ctrl-C in the address bar.';
+    if(!ok){try{history.replaceState(null,'','#s='+encodeState(collectState()));}catch(e){}}
+    setTimeout(()=>{if(msg)msg.textContent='';},5000);
   };
-  if(navigator.clipboard && navigator.clipboard.writeText){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>done(true),()=>done(false));
-  }else{
-    try{ const t=document.createElement('textarea'); t.value=url; t.style.position='fixed'; t.style.opacity='0';
-         document.body.appendChild(t); t.select(); const ok=document.execCommand('copy'); document.body.removeChild(t); done(ok); }
-    catch(e){ done(false); }
-  }
+  }else{done(false);}
   return false;
 };
+window.resetSaved=function(){try{localStorage.removeItem(LS_KEY);}catch(e){}location.reload();};
 
-// all inputs trigger render (+ save)
-document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>{render();saveState();}));
-window.resetSaved=function(){ try{localStorage.removeItem(LS_KEY);}catch(e){} location.reload(); };
+// shared inputs trigger render (+ save); loan-card inputs have their own listeners
+document.querySelectorAll('.wrap input:not([data-f]),.wrap select').forEach(el=>{
+  if(el.id==='detailLoan')return;
+  el.addEventListener('input',()=>{render();saveState();});
+});
 
-// apply a shared scenario from the URL if present, otherwise restore this browser's saved values
-if(!loadFromURL()) loadState();
+if(!loadFromURL())loadState();
+buildLoanCards();
 render();
 </script>
 </body>
