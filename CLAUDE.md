@@ -46,7 +46,10 @@ Never commit the gitignored source documents (PDFs, screenshots).
   (settlement day → month-end, inclusive; 8/12 → 20 days), `loanCalc(p,ln)` (the heart:
   amortization arrays `bal/cumInt/cumPmi` indexed 0..360, PMI until 78% of price, lender
   charges, cash-to-close waterfall), `costAt/outlayAt/metricAt` (chart metrics),
-  `crossovers(fa,fb)`, `takeHome(p)` / `soloNet(...)`.
+  `baselineIdx(lcs)` / `breakEvenMonth(lcBase,lc)` (the cheapest-upfront loan is the
+  break-even baseline; break-even = first month a loan's cumulative true cost drops below
+  the baseline's, i.e. when its points/fee premium is repaid — refi before then loses it),
+  `takeHome(p)` / `soloNet(...)`.
 - **Loans state** — `loans` is an array of `{name,rate,pts,credits,fees,escrow,quotedPI,slot}`.
   `pts` (a % of loan) is canonical; the card's **Points $ box is a synced mirror** (editing
   either recomputes the other via `loanAmount(p)`; the $ mirror also refreshes on price/down
@@ -70,9 +73,11 @@ Never commit the gitignored source documents (PDFs, screenshots).
 - **Chart** — hand-rolled SVG (`renderChart`), viewBox 960×430, styled per the dataviz skill:
   series palette `--s1..--s6` (validated for CVD/contrast against `#1e293b`), 2px lines,
   hairline solid gridlines, legend for ≥2 series, two-line end labels placed into 28px slots
-  with leader lines when lines converge, crossover dots + break-even sentences (cost metrics
-  only), crosshair tooltip on hover **and keyboard** (arrows/Home/End on the hit rect), and a
-  milestone table as the chart's table view. `metric` global: `cost | outlay | balance`.
+  with leader lines when lines converge, per-loan break-even dots vs the baseline (cost
+  metrics only; the table's Break-even column carries the exact dates — there is deliberately
+  no pairwise-crossover list), crosshair tooltip on hover **and keyboard** (arrows/Home/End on
+  the hit rect), and a milestone table as the chart's table view. `metric` global:
+  `cost | outlay | balance`.
   “True cost” = interest + PMI + lender charges (principal is equity, not cost); escrows and
   seller reimbursements are cash-to-close items but *not* true cost.
 - **Persistence & sharing** — `collectState()` = `{v:2, inputs, metric, loans}`;

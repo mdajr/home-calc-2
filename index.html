@@ -281,12 +281,12 @@
       <div class="tblwrap"><table id="cmpTable">
         <thead><tr>
           <th>Loan</th><th>Rate</th><th>P&amp;I</th><th>PMI/mo</th><th>Monthly<br>(PITI+HOA)</th>
-          <th>% of<br>take-home</th><th>Leftover<br>/mo</th><th>Lender<br>charges</th><th>Cash to<br>close</th>
+          <th>% of<br>take-home</th><th>Leftover<br>/mo</th><th>Lender<br>charges</th><th>Break-<br>even</th><th>Cash to<br>close</th>
           <th>Cash left<br>after close</th><th>5-yr<br>cost</th><th>10-yr<br>cost</th>
         </tr></thead>
         <tbody></tbody>
       </table></div>
-      <div class="hint" style="margin-top:6px">Lender charges = points + fees − credits + prepaid interest. “Cost” = interest + PMI + lender charges (principal is equity, not cost). Cash to close is net of earnest + POC already paid. Leftover = take-home − payment − utilities/maintenance − spending − debt.</div>
+      <div class="hint" style="margin-top:6px">Lender charges = points + fees − credits + prepaid interest. <b>Break-even</b> = how long you must keep the loan for its extra upfront cost vs the cheapest-upfront loan (the “baseline”) to be repaid by the lower rate — refinance or sell before then and the buydown premium is lost; “never” means the rate advantage can’t repay the upfront premium within 30 years. “Cost” = interest + PMI + lender charges (principal is equity, not cost). Cash to close is net of earnest + POC already paid. Leftover = take-home − payment − utilities/maintenance − spending − debt.</div>
     </div>
 
     <div class="panel">
@@ -403,16 +403,20 @@ function metricAt(metric,p,lc,m){
   return metric==='balance'?lc.bal[m]:metric==='outlay'?outlayAt(p,lc,m):costAt(lc,m);
 }
 
-// first month (>0) where series a−b changes sign; [] if none
-function crossovers(fa,fb){
-  const out=[];
-  let prev=fa(0)-fb(0);
+// the cheapest-upfront loan is the break-even baseline: buying points (or paying higher
+// lender fees) only pays off once the lower rate has repaid the extra upfront cost
+function baselineIdx(lcs){
+  let bi=-1;
+  lcs.forEach((lc,i)=>{if(bi<0||lc.lenderCharges<lcs[bi].lenderCharges)bi=i;});
+  return bi;
+}
+// first month where this loan's cumulative cost drops below the baseline's — refinancing or
+// selling before this month forfeits part of the buydown/fee premium; null = never recouped
+function breakEvenMonth(lcBase,lc){
   for(let m=1;m<=TERM_MONTHS;m++){
-    const d=fa(m)-fb(m);
-    if((prev<0&&d>=0)||(prev>0&&d<=0)) out.push(m);
-    prev=d;
+    if(costAt(lc,m)<=costAt(lcBase,m)) return m;
   }
-  return out;
+  return null;
 }
 
 // ---------- take-home (2026 MFJ, both maxing 401k+HSA) ----------
@@ -614,14 +618,26 @@ function renderOutputs(){
 
 function renderTable(p,th,lcs){
   const tb=$('cmpTable').querySelector('tbody'); tb.innerHTML='';
-  if(!loans.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--muted)">Add a loan above to compare.</td></tr>';return;}
+  if(!loans.length){tb.innerHTML='<tr><td colspan="13" style="text-align:center;color:var(--muted)">Add a loan above to compare.</td></tr>';return;}
   const best10=Math.min(...lcs.map(lc=>costAt(lc,120)));
+  const bi=baselineIdx(lcs);
+  const startYear=+(p.settle||'2026-08-12').slice(0,4), startMonth=+(p.settle||'2026-08-12').slice(5,7);
   loans.forEach((ln,i)=>{
     const lc=lcs[i];
     const leftover=th.netMo-lc.monthly-p.utilMaint-p.spend-p.debt;
     const cashLeft=p.cash-lc.cashToClose;
     const pctNet=th.netMo>0?lc.monthly/th.netMo*100:0;
     const c10=costAt(lc,120);
+    let be;
+    if(i===bi) be='<span class="pill good">baseline</span>';
+    else{
+      const m=breakEvenMonth(lcs[bi],lc);
+      if(m==null) be='<span class="pill bad">never</span>';
+      else{
+        const d=new Date(startYear,startMonth-1+m,1);
+        be=`${(m/12).toFixed(1)} yr<br><span class="hint">${d.toLocaleDateString(undefined,{month:'short',year:'numeric'})}</span>`;
+      }
+    }
     tb.innerHTML+=`<tr>
       <td><span class="chip" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${seriesColor(ln.slot)};margin-right:6px"></span>${esc(ln.name)}</td>
       <td>${ln.rate.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}%</td>
@@ -631,6 +647,7 @@ function renderTable(p,th,lcs){
       <td>${pct(pctNet)}</td>
       <td style="color:${leftover>=p.cushion?'var(--good)':leftover>=0?'var(--warn)':'var(--bad)'}">${fmt(leftover)}</td>
       <td>${fmt(lc.lenderCharges)}</td>
+      <td>${be}</td>
       <td>${fmt(lc.cashToClose)}</td>
       <td style="color:${cashLeft>=0?'var(--ink)':'var(--bad)'}">${fmt(cashLeft)}</td>
       <td>${fmt(costAt(lc,60))}</td>
@@ -685,36 +702,18 @@ function renderChart(p,lcs){
     g+=`<path d="${d}" fill="none" stroke="${seriesColor(ln.slot)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   });
 
-  // crossover markers + break-even list (cost metrics only; identical for cost & outlay shapes)
-  if(metric!=='balance'){
-    const seen=new Set();
-    for(let i=0;i<loans.length;i++)for(let j=i+1;j<loans.length;j++){
-      crossovers(fns[i],fns[j]).forEach(m=>{
-        const v=fns[i](m);
-        g+=`<circle cx="${X(m)}" cy="${Y(v)}" r="4.5" fill="var(--ink)" stroke="var(--panel)" stroke-width="2"/>`;
-        const yrs=(m/12);
-        const date=new Date(startYear,startMonth-1+m,1);
-        const when=date.toLocaleDateString(undefined,{month:'short',year:'numeric'});
-        // which loan is cheaper AFTER the crossover
-        const after=Math.min(m+12,TERM_MONTHS);
-        const winner=fns[i](after)<fns[j](after)?loans[i]:loans[j];
-        const loser=winner===loans[i]?loans[j]:loans[i];
-        const key=i+'-'+j+'-'+m;
-        if(!seen.has(key)){seen.add(key);
-          const div=document.createElement('div');
-          const chip=document.createElement('span');
-          chip.style.cssText=`display:inline-block;width:10px;height:10px;border-radius:3px;background:${seriesColor(winner.slot)};margin-right:6px`;
-          div.appendChild(chip);
-          div.appendChild(document.createTextNode(`${winner.name} overtakes ${loser.name} after ${yrs.toFixed(1)} yr (${when}, ~${fmtK(v)} spent)`));
-          bes.appendChild(div);
-        }
-      });
-    }
-    if(!bes.children.length&&loans.length>1){
-      const div=document.createElement('div');div.className='hint';
-      div.textContent='No crossover within 30 years — one loan stays cheaper the whole way.';
-      bes.appendChild(div);
-    }
+  // break-even dots vs the cheapest-upfront baseline (cost metrics only; break-even months
+  // are computed on true cost, so they're identical on the outlay view)
+  if(metric!=='balance'&&loans.length>1){
+    const bi=baselineIdx(lcs);
+    loans.forEach((ln,i)=>{
+      if(i===bi)return;
+      const m=breakEvenMonth(lcs[bi],lcs[i]);
+      if(m!=null)g+=`<circle cx="${X(m)}" cy="${Y(fns[i](m))}" r="4.5" fill="${seriesColor(ln.slot)}" stroke="var(--panel)" stroke-width="2"/>`;
+    });
+    const div=document.createElement('div');div.className='hint';
+    div.textContent=`Dots mark each loan's break-even vs ${loans[bi].name} (the cheapest-upfront baseline): refinance or sell before a loan's dot and its extra points/fees aren't recouped. Exact timing is in the table's Break-even column.`;
+    bes.appendChild(div);
   }
 
   // direct end labels (two lines: value + name), spaced into 28px slots with leader lines when lines converge
@@ -921,7 +920,7 @@ function renderAssump(p){
   $('assump').innerHTML=`
     <b>Purchase.</b> 201 Snowberry Way, West Whiteland Twp — under contract at ${fmt(p.price)}, settling ${esc(p.settle)}. All loans are <b>30-year fixed, conventional</b>. Shared-cost defaults (property tax, insurance, HOA, title, transfer tax, escrows, reimbursements) come from the KW Buyer's Estimated Closing Cost report (v4, 6/22/26) — the realtor's worksheet, not a lender quote. As a math cross-check, its illustrative 6.9% / 20% down / 0-point scenario is reproduced exactly: $5,028.21/mo and $149,995.89 cash at settlement.
     <b>Per-loan numbers.</b> Prepaid interest = loan × rate / 365 × ${p.prepaidDays} days (settlement to month-end). Lender charges = points + fees − credits + prepaid interest. On an official Loan Estimate, points $ is Section A's "(Points)" line, lender fees are the rest of A plus B, and a loan's own escrow demand (Section G) can override the shared escrow default (the $750 fee default is the KW estimate's appraisal + credit report + doc prep + flood cert + tax service). Title, transfer/recording taxes, prepaids and realtor fees are shared inputs so lenders compare on identical third-party costs. Rate-sheet pricing already embeds LLPAs, so no separate LLPA is modeled. PMI (if &lt;20% down) runs until the balance amortizes to 78% of price. Chase-menu cards derive points $ from each row's "estimated total fees" minus the 6.625% baseline row.
-    <b>Chart.</b> “True cost” = cumulative interest + PMI + lender charges — principal builds equity so it isn't a cost; crossover dots mark where one loan's total passes another's. “Total outlay” adds principal, taxes, insurance, HOA and all upfront cash (including earnest + POC); identical across-loan shifts, so crossovers match. Escrows/reimbursements are timing-based prepayments of taxes and insurance, counted in cash-to-close but not in true cost.
+    <b>Chart &amp; break-even.</b> “True cost” = cumulative interest + PMI + lender charges — principal builds equity so it isn't a cost. Each loan's <b>break-even</b> is measured against the cheapest-upfront loan in the set: the month its cumulative true cost drops below the baseline's, i.e. when the buydown/fee premium has been repaid by the lower rate. Refinancing or selling before break-even forfeits the unrecouped premium — so a deep buydown only makes sense if you expect to keep the loan past its dot. “Total outlay” adds principal, taxes, insurance, HOA and all upfront cash (including earnest + POC); it shifts all loans alike, so break-evens match. Escrows/reimbursements are timing-based prepayments of taxes and insurance, counted in cash-to-close but not in true cost.
     <b>Take-home.</b> 2026 MFJ: std deduction $${STD_DED.toLocaleString()}, 401(k) $${MAX_401K.toLocaleString()}/person + HSA $${HSA_FAMILY.toLocaleString()} maxed, SS wage base $${SS_WAGE_BASE.toLocaleString()}/person, PA 3.07% + EIT ${p.eit}%. Standard deduction only (no itemized mortgage interest/SALT) — conservative.
     <br>Sources:
     <a href="https://taxfoundation.org/data/all/federal/2026-tax-brackets/" target="_blank">2026 federal brackets</a> ·

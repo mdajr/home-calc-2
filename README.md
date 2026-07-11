@@ -31,12 +31,15 @@ see git history for that version.)*
   auto-terminates in the model when the balance amortizes to 78% of price. An optional
   appraised value models an appraisal gap (extra cash, smaller loan).
 - **Side-by-side table.** Per loan: P&I, PMI, total monthly (PITI+HOA), % of take-home,
-  monthly leftover, lender charges, cash to close, cash remaining, and 5/10-year true cost
-  (10-year best flagged).
+  monthly leftover, lender charges, **break-even**, cash to close, cash remaining, and
+  5/10-year true cost (10-year best flagged).
+- **Break-even vs the cheapest-upfront baseline.** The loan with the lowest lender charges is
+  the baseline; every other loan's break-even is the month its cumulative cost drops below
+  the baseline's — i.e. how long you must keep the loan before refinancing/selling stops
+  forfeiting the points/fee premium ("never" = the rate advantage can't repay it in 30 years).
 - **Cost-over-time chart.** All loans plotted for 30 years with a metric toggle:
   - **True cost** — cumulative interest + PMI + lender charges (principal builds equity, so
-    it isn't a cost). Crossover dots + a break-even list show exactly when a bought-down
-    rate overtakes a cheaper-upfront loan.
+    it isn't a cost). Dots mark each loan's break-even vs the baseline.
   - **Total outlay** — all cash out the door including principal, taxes, insurance, HOA and
     upfront costs.
   - **Remaining balance.**
