@@ -81,11 +81,19 @@ see git history for that version.)*
 | PMI (if <20% down) | 0.6%/yr until 78% LTV | assumption |
 | Cash yield (discount rate) | 4%/yr (≈ VUSXX) | assumption |
 
-Default loan cards are the actual lender quotes in hand: the US Financial/UWM Loan Estimate
-of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow — **not rate-locked**; its pricing
-expires 7/23/26) and all five rows of Chase's rate menu of 7/10/26 (6.625% ≈0-pt baseline
-down to 6.125%, points derived from menu fee deltas; menu prices a 45-day lock → good
-through 8/24/26).
+Default loan cards are the actual lender quotes in hand:
+
+- **US Financial/UWM Loan Estimate** of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow
+  — **not rate-locked**; its pricing expires 7/23/26), plus a **US Financial 5.99% (target)**
+  card — the rate the broker is trying to hit. There's no LE for it yet, so it carries the
+  6.995% card's fees/escrow at 5.99%; its points (buydown cost) are a placeholder to update
+  once a real quote lands.
+- **Chase** — two reference rows from the 7/10/26 rate menu (6.625% ≈0-pt baseline and 6.250%,
+  points derived from menu fee deltas; 45-day lock → good through 8/24/26), plus the actual
+  **JPMorgan Chase Loan Estimate** of 7/15/26 at **6.125%** (1.627 pts = $9,892, $2,751 fees,
+  $3,418 Section-G escrow; Rate Lock: NO, so priced like a 45-day lock → good through 8/29/26)
+  and a **6.000% (RPP)** card — the same LE with Chase's 0.125% Relationship Pricing Program
+  rate discount.
 
 No separate LLPA is modeled — real rate-sheet pricing already embeds it.
 

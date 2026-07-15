@@ -470,16 +470,25 @@ const MAX_LOANS=SERIES.length;
 // US Financial/UWM Loan Estimate 7/9/26: points 0.879% = $5,346; fees = $1,250 underwriting
 // + $1,838 Section B; escrow = Section G $7,525. Its page 1 says Rate Lock: NO — the rate
 // floats, and the LE's pricing/costs expire 7/23/26 5:00 PM EDT (goodThru).
-// Chase rate menu 7/10/26: points $ derived as each row's "estimated total fees" minus the
-// 6.625% baseline row's $15,844.30; lender fees left at the shared default (menu doesn't
-// itemize them); menu prices a 45-day lock → good through 8/24/26.
+// Chase 6.625%/6.250% rows are from the 7/10/26 rate menu: points $ derived as each row's
+// "estimated total fees" minus the 6.625% baseline row's $15,844.30; lender fees left at the
+// shared default (menu doesn't itemize them); menu prices a 45-day lock → good through 8/24/26.
+// Chase 6.125% (LE) is the actual JPMorgan Chase Loan Estimate 7/15/26 (loan $608,000):
+// points 1.627% = $9,892; fees = Section A non-points ($95 verification + $1,595 processing =
+// $1,690) + Section B $1,061 = $2,751; escrow = Section G $3,418. Page 1 Rate Lock: NO, so
+// (like the US Financial LE) it isn't locked; Chase prices a 45-day lock → good through 8/29/26.
+// Chase 6.000% (RPP) derives from that Chase LE at the same points/fees/escrow — the LE with
+// Chase's 0.125% Relationship Pricing Program rate discount; no sheet-quoted P&I (quotedPI null).
+// US Financial 5.99% (target) is the rate the broker is trying to hit via US Financial; there is
+// no LE for it yet, so it duplicates the US Financial 6.995% card's fees/escrow at 5.99% — the
+// points (buydown cost) are a placeholder to replace once a real 5.99% quote lands (quotedPI null).
 let loans=[
-  {name:'US Financial 6.995%', rate:6.995, pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:4043.00, quoted:'2026-07-09', goodThru:'2026-07-23', slot:0},
-  {name:'Chase 6.625% ~0pt',   rate:6.625, pts:0,     credits:0, fees:750,  escrow:null, quotedPI:3893.09, quoted:'2026-07-10', goodThru:'2026-08-24', slot:1},
-  {name:'Chase 6.500%',        rate:6.5,   pts:0.339, credits:0, fees:750,  escrow:null, quotedPI:3842.97, quoted:'2026-07-10', goodThru:'2026-08-24', slot:2},
-  {name:'Chase 6.375%',        rate:6.375, pts:0.799, credits:0, fees:750,  escrow:null, quotedPI:3793.13, quoted:'2026-07-10', goodThru:'2026-08-24', slot:3},
-  {name:'Chase 6.250%',        rate:6.25,  pts:1.307, credits:0, fees:750,  escrow:null, quotedPI:3743.56, quoted:'2026-07-10', goodThru:'2026-08-24', slot:4},
-  {name:'Chase 6.125%',        rate:6.125, pts:1.668, credits:0, fees:750,  escrow:null, quotedPI:3694.27, quoted:'2026-07-10', goodThru:'2026-08-24', slot:5},
+  {name:'US Financial 6.995%',         rate:6.995, pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:4043.00, quoted:'2026-07-09', goodThru:'2026-07-23', slot:0},
+  {name:'US Financial 5.99% (target)', rate:5.99,  pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:null,    quoted:null,         goodThru:null,        slot:3},
+  {name:'Chase 6.625% ~0pt',           rate:6.625, pts:0,     credits:0, fees:750,  escrow:null, quotedPI:3893.09, quoted:'2026-07-10', goodThru:'2026-08-24', slot:1},
+  {name:'Chase 6.250%',                rate:6.25,  pts:1.307, credits:0, fees:750,  escrow:null, quotedPI:3743.56, quoted:'2026-07-10', goodThru:'2026-08-24', slot:4},
+  {name:'Chase 6.125% (LE)',           rate:6.125, pts:1.627, credits:0, fees:2751, escrow:3418, quotedPI:3694.27, quoted:'2026-07-15', goodThru:'2026-08-29', slot:5},
+  {name:'Chase 6.000% (RPP)',          rate:6.0,   pts:1.627, credits:0, fees:2751, escrow:3418, quotedPI:null,    quoted:'2026-07-15', goodThru:'2026-08-29', slot:2},
 ];
 let metric='cost';
 function freeSlot(){for(let s=0;s<MAX_LOANS;s++)if(!loans.some(l=>l.slot===s))return s;return -1;}
