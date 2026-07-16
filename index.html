@@ -480,11 +480,13 @@ const MAX_LOANS=SERIES.length;
 // Chase 6.000% (RPP) derives from that Chase LE at the same points/fees/escrow — the LE with
 // Chase's 0.125% Relationship Pricing Program rate discount; no sheet-quoted P&I (quotedPI null).
 // US Financial 5.99% (target) is the rate the broker is trying to hit via US Financial; there is
-// no LE for it yet, so it duplicates the US Financial 6.995% card's fees/escrow at 5.99% — the
-// points (buydown cost) are a placeholder to replace once a real 5.99% quote lands (quotedPI null).
+// no LE for it yet, so it uses the US Financial 6.995% card's fees ($3,088) and escrow ($7,525),
+// with points estimated as a buydown from market par: the Chase LE implies ~3.254 pts per 1% of
+// rate (6.625% @ 0 pts → 6.125% @ 1.627 pts), so 6.625% → 5.99% ≈ 0.635% × 3.254 = 2.066 pts
+// (~$12,560). No sheet-quoted P&I to check against (quotedPI null); replace once a real quote lands.
 let loans=[
   {name:'US Financial 6.995%',         rate:6.995, pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:4043.00, quoted:'2026-07-09', goodThru:'2026-07-23', slot:0},
-  {name:'US Financial 5.99% (target)', rate:5.99,  pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:null,    quoted:null,         goodThru:null,        slot:3},
+  {name:'US Financial 5.99% (target)', rate:5.99,  pts:2.066, credits:0, fees:3088, escrow:7525, quotedPI:null,    quoted:null,         goodThru:null,        slot:3},
   {name:'Chase 6.625% ~0pt',           rate:6.625, pts:0,     credits:0, fees:750,  escrow:null, quotedPI:3893.09, quoted:'2026-07-10', goodThru:'2026-08-24', slot:1},
   {name:'Chase 6.250%',                rate:6.25,  pts:1.307, credits:0, fees:750,  escrow:null, quotedPI:3743.56, quoted:'2026-07-10', goodThru:'2026-08-24', slot:4},
   {name:'Chase 6.125% (LE)',           rate:6.125, pts:1.627, credits:0, fees:2751, escrow:3418, quotedPI:3694.27, quoted:'2026-07-15', goodThru:'2026-08-29', slot:5},

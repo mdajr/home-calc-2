@@ -86,7 +86,8 @@ Default loan cards are the actual lender quotes in hand:
 - **US Financial/UWM Loan Estimate** of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow
   — **not rate-locked**; its pricing expires 7/23/26), plus a **US Financial 5.99% (target)**
   card — the rate the broker is trying to hit. There's no LE for it yet, so it carries the
-  6.995% card's fees/escrow at 5.99%; its points (buydown cost) are a placeholder to update
+  6.995% card's fees/escrow at 5.99% with points estimated as a buydown from market par: the
+  Chase LE implies ~3.25 pts per 1% of rate, so 6.625% → 5.99% ≈ 2.07 pts (~$12,560). Replace
   once a real quote lands.
 - **Chase** — two reference rows from the 7/10/26 rate menu (6.625% ≈0-pt baseline and 6.250%,
   points derived from menu fee deltas; 45-day lock → good through 8/24/26), plus the actual
