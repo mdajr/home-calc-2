@@ -470,27 +470,16 @@ const MAX_LOANS=SERIES.length;
 // US Financial/UWM Loan Estimate 7/9/26: points 0.879% = $5,346; fees = $1,250 underwriting
 // + $1,838 Section B; escrow = Section G $7,525. Its page 1 says Rate Lock: NO — the rate
 // floats, and the LE's pricing/costs expire 7/23/26 5:00 PM EDT (goodThru).
-// Chase 6.625%/6.250% rows are from the 7/10/26 rate menu: points $ derived as each row's
-// "estimated total fees" minus the 6.625% baseline row's $15,844.30; lender fees left at the
-// shared default (menu doesn't itemize them); menu prices a 45-day lock → good through 8/24/26.
-// Chase 6.125% (LE) is the actual JPMorgan Chase Loan Estimate 7/15/26 (loan $608,000):
-// points 1.627% = $9,892; fees = Section A non-points ($95 verification + $1,595 processing =
-// $1,690) + Section B $1,061 = $2,751; escrow = Section G $3,418. Page 1 Rate Lock: NO, so
-// (like the US Financial LE) it isn't locked; Chase prices a 45-day lock → good through 8/29/26.
-// Chase 6.000% (RPP) derives from that Chase LE at the same points/fees/escrow — the LE with
-// Chase's 0.125% Relationship Pricing Program rate discount; no sheet-quoted P&I (quotedPI null).
-// US Financial 5.99% (target) is the rate the broker is trying to hit via US Financial; there is
-// no LE for it yet, so it uses the US Financial 6.995% card's fees ($3,088) and escrow ($7,525),
-// with points estimated as a buydown from market par: the Chase LE implies ~3.254 pts per 1% of
-// rate (6.625% @ 0 pts → 6.125% @ 1.627 pts), so 6.625% → 5.99% ≈ 0.635% × 3.254 = 2.066 pts
-// (~$12,560). No sheet-quoted P&I to check against (quotedPI null); replace once a real quote lands.
+// Chase 6.000% (locked LE) is the JPMorgan Chase Loan Estimate issued 7/22/26 (loan $608,000):
+// points 1.642% = $9,983; fees = Section A non-points ($95 verification + $1,595 processing =
+// $1,690) + Section B $1,061 = $2,751; escrow = Section G $3,418. This LE is RATE-LOCKED —
+// page 1 Rate Lock: YES until 8/17/26 11:59 PM EDT (goodThru), which covers the 8/12/26
+// settlement. The LE prints 6.125% / $3,694.27 P&I, but Chase confirmed the rate at 6.000%
+// (relationship pricing discount), so rate is 6.0 here; the printed P&I is at 6.125%, so it is
+// not a valid transcription check at 6.0% (quotedPI null).
 let loans=[
-  {name:'US Financial 6.995%',         rate:6.995, pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:4043.00, quoted:'2026-07-09', goodThru:'2026-07-23', slot:0},
-  {name:'US Financial 5.99% (target)', rate:5.99,  pts:2.066, credits:0, fees:3088, escrow:7525, quotedPI:null,    quoted:null,         goodThru:null,        slot:3},
-  {name:'Chase 6.625% ~0pt',           rate:6.625, pts:0,     credits:0, fees:750,  escrow:null, quotedPI:3893.09, quoted:'2026-07-10', goodThru:'2026-08-24', slot:1},
-  {name:'Chase 6.250%',                rate:6.25,  pts:1.307, credits:0, fees:750,  escrow:null, quotedPI:3743.56, quoted:'2026-07-10', goodThru:'2026-08-24', slot:4},
-  {name:'Chase 6.125% (LE)',           rate:6.125, pts:1.627, credits:0, fees:2751, escrow:3418, quotedPI:3694.27, quoted:'2026-07-15', goodThru:'2026-08-29', slot:5},
-  {name:'Chase 6.000% (RPP)',          rate:6.0,   pts:1.627, credits:0, fees:2751, escrow:3418, quotedPI:null,    quoted:'2026-07-15', goodThru:'2026-08-29', slot:2},
+  {name:'US Financial 6.995%',      rate:6.995, pts:0.879, credits:0, fees:3088, escrow:7525, quotedPI:4043.00, quoted:'2026-07-09', goodThru:'2026-07-23', slot:0},
+  {name:'Chase 6.000% (locked LE)', rate:6.0,   pts:1.642, credits:0, fees:2751, escrow:3418, quotedPI:null,    quoted:'2026-07-22', goodThru:'2026-08-17', slot:1},
 ];
 let metric='cost';
 function freeSlot(){for(let s=0;s<MAX_LOANS;s++)if(!loans.some(l=>l.slot===s))return s;return -1;}
@@ -944,7 +933,7 @@ function renderBudget(p,th){
 function renderAssump(p){
   $('assump').innerHTML=`
     <b>Purchase.</b> 201 Snowberry Way, West Whiteland Twp — under contract at ${fmt(p.price)}, settling ${esc(p.settle)}. All loans are <b>30-year fixed, conventional</b>. Shared-cost defaults (property tax, insurance, HOA, title, transfer tax, escrows, reimbursements) come from the KW Buyer's Estimated Closing Cost report (v4, 6/22/26) — the realtor's worksheet, not a lender quote. As a math cross-check, its illustrative 6.9% / 20% down / 0-point scenario is reproduced exactly: $5,028.21/mo and $149,995.89 cash at settlement.
-    <b>Per-loan numbers.</b> Prepaid interest = loan × rate / 365 × ${p.prepaidDays} days (settlement to month-end). Lender charges = points + fees − credits + prepaid interest. On an official Loan Estimate, points $ is Section A's "(Points)" line, lender fees are the rest of A plus B, and a loan's own escrow demand (Section G) can override the shared escrow default (the $750 fee default is the KW estimate's appraisal + credit report + doc prep + flood cert + tax service). Title, transfer/recording taxes, prepaids and realtor fees are shared inputs so lenders compare on identical third-party costs. Rate-sheet pricing already embeds LLPAs, so no separate LLPA is modeled. PMI (if &lt;20% down) runs until the balance amortizes to 78% of price. Chase-menu cards derive points $ from each row's "estimated total fees" minus the 6.625% baseline row. Each card's <b>quoted-on / good-through dates</b> flag stale quotes (rates reprice daily) and pricing that can't reach settlement: the US Financial LE is <i>not</i> rate-locked (its pricing expires 7/23/26); the Chase menu prices a 45-day lock.
+    <b>Per-loan numbers.</b> Prepaid interest = loan × rate / 365 × ${p.prepaidDays} days (settlement to month-end). Lender charges = points + fees − credits + prepaid interest. On an official Loan Estimate, points $ is Section A's "(Points)" line, lender fees are the rest of A plus B, and a loan's own escrow demand (Section G) can override the shared escrow default (the $750 fee default is the KW estimate's appraisal + credit report + doc prep + flood cert + tax service). Title, transfer/recording taxes, prepaids and realtor fees are shared inputs so lenders compare on identical third-party costs. Rate-sheet pricing already embeds LLPAs, so no separate LLPA is modeled. PMI (if &lt;20% down) runs until the balance amortizes to 78% of price. Each card's <b>quoted-on / good-through dates</b> flag stale quotes (rates reprice daily) and pricing that can't reach settlement: the US Financial LE is <i>not</i> rate-locked (its pricing expires 7/23/26); the Chase LE <i>is</i> rate-locked through 8/17/26 (the LE prints 6.125% but the rate was confirmed at 6.000% via relationship pricing, so the card uses 6.0%).
     <b>Chart &amp; break-even.</b> “True cost” = cumulative interest + PMI + lender charges — principal builds equity so it isn't a cost. Future interest and PMI are discounted to today's dollars at the <b>cash yield</b> (${p.disc}%/yr — what the money would otherwise earn, e.g. VUSXX), because points are paid in today's dollars while the rate savings arrive over years; set it to 0 for plain nominal totals. Each loan's <b>break-even</b> is measured against the cheapest-upfront loan in the set: the month its cumulative true cost drops below the baseline's, i.e. when the buydown/fee premium has been repaid by the lower rate. Refinancing or selling before break-even forfeits the unrecouped premium — so a deep buydown only makes sense if you expect to keep the loan past its dot. “Total outlay” adds principal, taxes, insurance, HOA and all upfront cash (including earnest + POC), undiscounted; it shifts all loans alike, so break-evens match. Escrows/reimbursements are timing-based prepayments of taxes and insurance, counted in cash-to-close but not in true cost.
     <b>Take-home.</b> 2026 MFJ: std deduction $${STD_DED.toLocaleString()}, 401(k) $${MAX_401K.toLocaleString()}/person + HSA $${HSA_FAMILY.toLocaleString()} maxed, SS wage base $${SS_WAGE_BASE.toLocaleString()}/person, PA 3.07% + EIT ${p.eit}%. Standard deduction only (no itemized mortgage interest/SALT) — conservative.
     <br>Sources:

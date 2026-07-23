@@ -63,13 +63,14 @@ Never commit the gitignored source documents (PDFs, screenshots).
   (✓/⚠ badge on the card, ±$1 tolerance). `quoted`/`goodThru` (nullable `YYYY-MM-DD` strings)
   drive the card's freshness/lock badges: amber when the quote is ≥3 days old, red when
   `goodThru` < settlement. The US Financial LE is **not rate-locked** (page 1 Rate Lock: NO) —
-  its `goodThru` is the LE's cost-expiration 7/23/26; Chase menus price a 45-day lock
-  (`goodThru` = quote date + 45). `slot` is the **permanent color slot** (palette
+  its `goodThru` is the LE's cost-expiration 7/23/26; the Chase LE **is** rate-locked (page 1
+  Rate Lock: YES until 8/17/26, its `goodThru`). `slot` is the **permanent color slot** (palette
   index): colors follow the loan, never its row position, so deleting a loan must not repaint
   survivors (`freeSlot()` assigns the lowest unused slot to new loans). Max 6 loans (palette
-  size). Defaults are the actual lender quotes in hand (US Financial/UWM LE; all five Chase
-  rate-menu rows with points $ derived from menu fee deltas vs the 6.625% baseline row) — the
-  KW worksheet is not one of them.
+  size). Defaults are the two actual lender quotes in hand: the US Financial/UWM LE (6.995%) and
+  the rate-locked JPMorgan Chase LE (7/22/26, loan $608,000 — printed 6.125% but the rate was
+  confirmed at 6.000% via relationship pricing, so the card uses 6.0%). The KW worksheet is not
+  one of them.
 - **`I()`** — reads all *shared* inputs (purchase, ongoing costs, closing costs, budget) into
   `p`. Loan-card inputs are **not** in `I()`; they live in `loans`.
 - **Loan cards** — `buildLoanCards()` rebuilds the card DOM **only on structural change**

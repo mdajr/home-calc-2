@@ -84,17 +84,12 @@ see git history for that version.)*
 Default loan cards are the actual lender quotes in hand:
 
 - **US Financial/UWM Loan Estimate** of 7/9/26 (6.995% + 0.879 pts, $3,088 fees, $7,525 escrow
-  — **not rate-locked**; its pricing expires 7/23/26), plus a **US Financial 5.99% (target)**
-  card — the rate the broker is trying to hit. There's no LE for it yet, so it carries the
-  6.995% card's fees/escrow at 5.99% with points estimated as a buydown from market par: the
-  Chase LE implies ~3.25 pts per 1% of rate, so 6.625% → 5.99% ≈ 2.07 pts (~$12,560). Replace
-  once a real quote lands.
-- **Chase** — two reference rows from the 7/10/26 rate menu (6.625% ≈0-pt baseline and 6.250%,
-  points derived from menu fee deltas; 45-day lock → good through 8/24/26), plus the actual
-  **JPMorgan Chase Loan Estimate** of 7/15/26 at **6.125%** (1.627 pts = $9,892, $2,751 fees,
-  $3,418 Section-G escrow; Rate Lock: NO, so priced like a 45-day lock → good through 8/29/26)
-  and a **6.000% (RPP)** card — the same LE with Chase's 0.125% Relationship Pricing Program
-  rate discount.
+  — **not rate-locked**; its pricing expires 7/23/26).
+- **Chase** — the actual **JPMorgan Chase Loan Estimate** issued 7/22/26 (loan $608,000):
+  1.642 pts = $9,983, $2,751 fees, $3,418 Section-G escrow, and **rate-locked** (Rate Lock: YES
+  until 8/17/26, covering the 8/12/26 settlement). The LE prints 6.125% / $3,694.27 P&I, but
+  Chase confirmed the rate at **6.000%** (relationship pricing discount), so the card is set to
+  6.0%; the printed P&I is at 6.125% and isn't a valid transcription check at 6.0%.
 
 No separate LLPA is modeled — real rate-sheet pricing already embeds it.
 
